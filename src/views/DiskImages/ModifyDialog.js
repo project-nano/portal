@@ -1,23 +1,7 @@
 import React from "react";
-// @material-ui/core components
-import Grid from "@material-ui/core/Grid";
-import Box from '@material-ui/core/Box';
-import Dialog from '@material-ui/core/Dialog';
-import DialogActions from '@material-ui/core/DialogActions';
-import DialogContent from '@material-ui/core/DialogContent';
-import DialogTitle from '@material-ui/core/DialogTitle';
 import Skeleton from '@material-ui/lab/Skeleton';
-import TextField from '@material-ui/core/TextField';
-import FormControlLabel from '@material-ui/core/FormControlLabel';
-import FormControl from '@material-ui/core/FormControl';
-import FormLabel from '@material-ui/core/FormLabel';
-import FormGroup from '@material-ui/core/FormGroup';
-import Checkbox from '@material-ui/core/Checkbox';
-
-// dashboard components
-import Button from "components/CustomButtons/Button.js";
-import GridItem from "components/Grid/GridItem.js";
-import SnackbarContent from "components/Snackbar/SnackbarContent.js";
+import InputList from "components/CustomInput/InputList";
+import CustomDialog from "components/Dialog/CustomDialog.js";
 import { getDiskImage, modifyDiskImage } from 'nano_api.js';
 
 const i18n = {
@@ -39,16 +23,6 @@ const i18n = {
   },
 }
 
-const SingleRow = (props) => (
-  <GridItem xs={12}>
-    <Box m={1} p={0}>
-      <Grid container>
-        {props.children}
-      </Grid>
-    </Box>
-  </GridItem>
-);
-
 export default function ModifyDialog(props){
   const defaultValues = {
     name: '',
@@ -57,19 +31,26 @@ export default function ModifyDialog(props){
   };
   const { lang, imageID, open, onSuccess, onCancel } = props;
   const [ initialed, setInitialed ] = React.useState(false);
-  const [ error, setError ] = React.useState('');
+  const [ operatable, setOperatable ] = React.useState(true);
+  const [ prompt, setPrompt ] = React.useState('');
+  const [ mounted, setMounted ] = React.useState(false);
   const [ request, setRequest ] = React.useState(defaultValues);
   const [ options, setOptions ] = React.useState({
     tags: [],
   });
 
   const texts = i18n[lang];
-  const onModifyFail = (msg) =>{
-    setError(msg);
-  }
+  const title = texts.title;
+  const onModifyFail = React.useCallback(msg =>{
+    if(!mounted){
+      return;
+    }
+    setOperatable(true);
+    setPrompt(msg);
+  }, [mounted]);
 
   const resetDialog = () => {
-    setError('');
+    setPrompt('');
     setRequest(defaultValues);
     setInitialed(false);
   }
@@ -80,11 +61,16 @@ export default function ModifyDialog(props){
   }
 
   const onModifySuccess = (imageID) =>{
+    if(!mounted){
+      return;
+    }
+    setOperatable(true);
     resetDialog();
     onSuccess(imageID);
   }
 
-  const confirmModify = () =>{
+  const handleConfirm = () =>{
+    setOperatable(false);
     const imageName = request.name;
     if ('' === imageName){
       onModifyFail('must specify image name');
@@ -115,6 +101,9 @@ export default function ModifyDialog(props){
   }
 
   const handleRequestPropsChanged = name => e =>{
+    if(!mounted){
+      return;
+    }
     var value = e.target.value
     setRequest(previous => ({
       ...previous,
@@ -123,6 +112,9 @@ export default function ModifyDialog(props){
   };
 
   const handleTagsChanged = name => e =>{
+    if(!mounted){
+      return;
+    }
     var value = e.target.checked
     setRequest(previous => ({
       ...previous,
@@ -131,7 +123,7 @@ export default function ModifyDialog(props){
   };
 
   React.useEffect(()=>{
-    if (!open || initialed){
+    if (!open){
       return;
     }
     const imageTags = [
@@ -142,10 +134,20 @@ export default function ModifyDialog(props){
       ['64bit', '64Bit'],
       ['32bit', '32Bit']
     ];
-
-    const onGetDiskSuccess = (image) => {
+    setMounted(true);
+    const onGetDiskSuccess = image => {
+      if(!mounted){
+        return;
+      }
+      var tagOptions = [];
+      imageTags.forEach(tag =>{
+        tagOptions.push({
+          label: tag[1],
+          value: tag[0],
+        });
+      });
       setOptions({
-        tags: imageTags,
+        tags: tagOptions,
       });
       var currentTags = new Map();
       if (image.tags){
@@ -162,117 +164,64 @@ export default function ModifyDialog(props){
     };
 
     getDiskImage(imageID, onGetDiskSuccess, onModifyFail);
-  }, [initialed, open, imageID]);
+    return () => {
+      setMounted(false);
+    }
+  }, [mounted, open, imageID, onModifyFail]);
 
   //begin render
+  var buttons = [{
+    color: 'transparent',
+    label: texts.cancel,
+    onClick: closeDialog,
+  }];
   let content;
   if (!initialed){
     content = <Skeleton variant="rect" style={{height: '10rem'}}/>;
   }else{
-    content = (
-      <Grid container>
-        <SingleRow>
-          <GridItem xs={8}>
-            <Box m={0} pt={2}>
-              <TextField
-                label={texts.name}
-                onChange={handleRequestPropsChanged('name')}
-                value={request.name}
-                margin="normal"
-                required
-                fullWidth
-              />
-            </Box>
-          </GridItem>
-        </SingleRow>
-        <SingleRow>
-          <GridItem xs={12}>
-            <Box m={0} pt={2}>
-              <TextField
-                label={texts.description}
-                onChange={handleRequestPropsChanged('description')}
-                value={request.description}
-                margin="normal"
-                rowsMax="4"
-                required
-                fullWidth
-                multiline
-              />
-            </Box>
-          </GridItem>
-        </SingleRow>
-        <SingleRow>
-          <GridItem xs={12}>
-            <Box m={0} pt={2}>
-              <FormControl component="fieldset" fullWidth>
-                <FormLabel component="legend">{texts.tags}</FormLabel>
-                <FormGroup>
-                  <Grid container>
-                    {
-                        options.tags.map(tag => {
-                          const tagValue = tag[0];
-                          const tagLabel = tag[1];
-                          let checked;
-                          if (request.tags.has(tagValue)){
-                            checked = request.tags.get(tagValue);
-                          }else{
-                            checked = false;
-                          }
-                          return (
-                            <GridItem xs={6} sm={3} key={tagValue}>
-                              <FormControlLabel
-                                control={<Checkbox checked={checked} onChange={handleTagsChanged(tagValue)} value={tagValue}/>}
-                                label={tagLabel}
-                              />
-                            </GridItem>
-                          )
-                        })
-                    }
-                  </Grid>
-                </FormGroup>
-              </FormControl>
-            </Box>
-          </GridItem>
-        </SingleRow>
-      </Grid>
+    const inputs = [
+      {
+        type: "text",
+        label: texts.name,
+        value: request.name,
+        onChange: handleRequestPropsChanged('name'),
+        required: true,
+        oneRow: true,
+        xs: 8,
+      },
+      {
+        type: "textarea",
+        label: texts.description,
+        value: request.description,
+        onChange: handleRequestPropsChanged('description'),
+        required: true,
+        oneRow: true,
+        rows: 4,
+        xs: 12,
+      },
+      {
+        type: "checkbox",
+        label: texts.tags,
+        onChange: handleTagsChanged,
+        value: request.tags,
+        options: options.tags,
+        required: true,
+        oneRow: true,
+        xs: 10,
+      },
+    ];
+
+    content = <InputList inputs={inputs}/>
+
+    buttons.push(
+      {
+        color: 'info',
+        label: texts.confirm,
+        onClick: handleConfirm,
+      }
     );
   }
 
-  let prompt;
-  if (!error || '' === error){
-    prompt = <GridItem xs={12}/>;
-  }else{
-    prompt = (
-      <GridItem xs={12}>
-        <SnackbarContent message={error} color="danger"/>
-      </GridItem>
-    );
-  }
-
-  return (
-    <Dialog
-      open={open}
-      aria-labelledby={texts.title}
-      maxWidth='sm'
-      fullWidth      
-    >
-      <DialogTitle>{texts.title}</DialogTitle>
-      <DialogContent>
-        <Grid container>
-          <GridItem xs={12}>
-            {content}
-          </GridItem>
-          {prompt}
-        </Grid>
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={closeDialog} color="transparent" autoFocus>
-          {texts.cancel}
-        </Button>
-        <Button onClick={confirmModify} color="info">
-          {texts.confirm}
-        </Button>
-      </DialogActions>
-    </Dialog>
-  )
+  return <CustomDialog size='sm' open={open} prompt={prompt}
+    title={title}  buttons={buttons} content={content} operatable={operatable}/>;
 };

@@ -62,7 +62,7 @@ export default function ModifyDialog(props){
     onSuccess(poolName);
   }
 
-  const handleModify = () =>{
+  const handleConfirm = () =>{
     setOperatable(false);
     const ipv4Pattern = new RegExp('^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?).){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$');
 
@@ -140,10 +140,14 @@ export default function ModifyDialog(props){
 
   //begin render
 
-  let content, buttons;
+  var buttons = [{
+    color: 'transparent',
+    label: texts.cancel,
+    onClick: closeDialog,
+  }];
+  let content;
   if (!initialed){
     content = <Skeleton variant="rect" style={{height: '10rem'}}/>;
-    buttons = [];
   }else{
     const inputs = [
       {
@@ -191,18 +195,13 @@ export default function ModifyDialog(props){
     ];
 
     content = <InputList inputs={inputs}/>
-    buttons = [
-      {
-        color: 'transparent',
-        label: texts.cancel,
-        onClick: closeDialog,
-      },
+    buttons.push(
       {
         color: 'info',
         label: texts.confirm,
-        onClick: handleModify,
-      },
-    ];
+        onClick: handleConfirm,
+      }
+    );
   }
 
   return <CustomDialog size='sm' open={open} prompt={prompt}

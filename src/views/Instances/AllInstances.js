@@ -534,19 +534,49 @@ export default function AllInstances(props){
       );
     }
 
-    var buttons = [
-      <Button size="sm" color="info" round onClick={showCreateDialog}><AddIcon />{texts.createButton}</Button>,
-      <Button size="sm" color="info" round onClick={showBatchCreateDialog}><PlaylistAddIcon />{texts.batchCreate}</Button>,
-    ]
-    if(batchMode){
-      buttons.push(
-        <Button size="sm" color="info" round onClick={showBatchDeleteDialog}><DeleteIcon />{texts.batchDelete}</Button>,
-        <Button size="sm" color="info" round onClick={showBatchStopDialog}><PowerSettingsNewIcon />{texts.batchStop}</Button>,
-        <Button size="sm" color="rose" round onClick={exitBatchMode}><ExitToAppIcon />{texts.exitBatch}</Button>,
+    var buttonProperties = [
+      {
+        label: texts.createButton,
+        icon: AddIcon,
+        color: "info",
+        onClick: showCreateDialog,
+      },
+      {
+        label: texts.batchCreate,
+        icon: PlaylistAddIcon,
+        color: "info",
+        onClick: showBatchCreateDialog,
+      }
+    ];
+    if (batchMode){
+      buttonProperties.push(
+        {
+          label: texts.batchDelete,
+          icon: DeleteIcon,
+          color: "danger",
+          onClick: showBatchDeleteDialog,
+        },
+        {
+          label: texts.batchStop,
+          icon: PowerSettingsNewIcon,
+          color: "info",
+          onClick: showBatchStopDialog,
+        },
+        {
+          label: texts.exitBatch,
+          icon: ExitToAppIcon,
+          color: "success",
+          onClick: exitBatchMode,
+        },
       );
     }else{
-      buttons.push(
-        <Button size="sm" color="info" round onClick={enterBatchMode}><ListIcon />{texts.enterBatch}</Button>
+      buttonProperties.push(
+        {
+          label: texts.enterBatch,
+          icon: ListIcon,
+          color: "info",
+          onClick: enterBatchMode,
+        }
       );
     }
 
@@ -635,9 +665,12 @@ export default function AllInstances(props){
         <GridItem xs={12}>
           <Box display='flex'>
             {
-              buttons.map((button, key) =>(
+              buttonProperties.map(({label, color, icon, onClick}, key) =>(
                 <Box key={key} m={1}>
-                  {button}
+                  <Button size="sm" color={color} round onClick={onClick}>
+                    {React.createElement(icon)}
+                    {label}
+                  </Button>
                 </Box>
               ))
             }

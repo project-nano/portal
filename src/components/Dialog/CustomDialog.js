@@ -13,7 +13,7 @@ import GridItem from "components/Grid/GridItem.js";
 import SnackbarContent from "components/Snackbar/SnackbarContent.js";
 
 export default function CustomDialog(props){
-  const { open, size, operatable, promptPosition, prompt, title, content, buttons} = props;
+  const { open, size, operatable, promptPosition, prompt, title, content, buttons, hideBackdrop} = props;
   let promptElement;
   if (prompt){
     promptElement = (
@@ -62,7 +62,7 @@ export default function CustomDialog(props){
     >
       <DialogTitle>{title}</DialogTitle>
       <DialogContent>
-        <Backdrop open={!operatable}>
+        <Backdrop open={!hideBackdrop && !operatable}>
           <CircularProgress color="inherit" />
         </Backdrop>
         {contentElement}

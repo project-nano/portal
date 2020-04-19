@@ -47,10 +47,13 @@ export default function ModifyDialog(props){
   }
 
   const texts = i18n[lang];
-  const onModifyFail = msg =>{
+  const onModifyFail = React.useCallback(msg =>{
+    if(!mounted){
+      return;
+    }
     setOperatable(true);
     setPrompt(msg);
-  }
+  }, [mounted]);
 
   const resetDialog = () =>{
     setPrompt('');
@@ -64,6 +67,9 @@ export default function ModifyDialog(props){
   }
 
   const onModifySuccess = poolName =>{
+    if(!mounted){
+      return;
+    }
     resetDialog();
     setOperatable(true);
     onSuccess(poolName);
@@ -128,7 +134,7 @@ export default function ModifyDialog(props){
     return () => {
       setMounted(false);
     }
-  }, [initialed, open, pool, mounted]);
+  }, [initialed, open, pool, mounted, onModifyFail]);
 
   let content;
   if (!initialed){

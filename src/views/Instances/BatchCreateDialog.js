@@ -9,10 +9,6 @@ import TableRow from '@material-ui/core/TableRow';
 import TableHead from '@material-ui/core/TableHead';
 import TableContainer from '@material-ui/core/TableContainer';
 import Paper from '@material-ui/core/Paper';
-import Dialog from '@material-ui/core/Dialog';
-import DialogActions from '@material-ui/core/DialogActions';
-import DialogContent from '@material-ui/core/DialogContent';
-import DialogTitle from '@material-ui/core/DialogTitle';
 import Skeleton from '@material-ui/lab/Skeleton';
 import TextField from '@material-ui/core/TextField';
 import MenuItem from '@material-ui/core/MenuItem';
@@ -36,11 +32,11 @@ import LinearProgress from '@material-ui/core/LinearProgress';
 import Typography from '@material-ui/core/Typography';
 
 // dashboard components
-import Button from "components/CustomButtons/Button.js";
 import GridItem from "components/Grid/GridItem.js";
 import SingleRow from "components/Grid/SingleRow.js";
-import SnackbarContent from "components/Snackbar/SnackbarContent.js";
-import { getAllComputePools, searchDiskImages, batchCreatingGuests, checkBatchCreatingStatus } from 'nano_api.js';
+import CustomDialog from "components/Dialog/CustomDialog.js";
+import { getAllComputePools, searchDiskImages, batchCreatingGuests,
+  checkBatchCreatingStatus, querySystemTemplates } from 'nano_api.js';
 
 const i18n = {
   'en':{
@@ -158,7 +154,7 @@ export default function CreateDialog(props){
     system_disk: 5,
     data_disk: 0,
     auto_start: false,
-    system_version: 'centos7',
+    system_template: '',
     from_image: defaultOption,
     modules: new Map(),
     module_cloud_init_admin_name: 'root',
@@ -172,7 +168,9 @@ export default function CreateDialog(props){
   const [ initialed, setInitialed ] = React.useState(false);
   const [ stage, setStage ] = React.useState(StageEnum.initial);
   const [ resultList, setResultList ] = React.useState(null);
-  const [ error, setError ] = React.useState('');
+  const [ operatable, setOperatable ] = React.useState(true);
+  const [ prompt, setPrompt ] = React.useState('');
+  const [ mounted, setMounted ] = React.useState(false);
   const [ request, setRequest ] = React.useState(defaultValues);
   const [ options, setOptions ] = React.useState({
     pools: [],
@@ -180,11 +178,18 @@ export default function CreateDialog(props){
     versions: [],
   });
   const texts = i18n[lang];
-  const onCreateFail = (msg) =>{
-    setError(msg);
-  }
+  const title = texts.title;
+
+  const onCreateFail = React.useCallback(msg =>{
+    if(!mounted){
+      return;
+    }
+    setOperatable(true);
+    setPrompt(msg);
+  }, [mounted]);
+
   const resetDialog = () => {
-    setError('');
+    setPrompt('');
     setRequest(defaultValues);
     setInitialed(false);
     setStage(StageEnum.initial);
@@ -196,12 +201,18 @@ export default function CreateDialog(props){
   }
 
   const onCreateSuccess = () =>{
+    if(!mounted){
+      return;
+    }
     resetDialog();
     onSuccess();
   }
 
   const onAccept = batchID => {
-    setError('');
+    if(!mounted){
+      return;
+    }
+    setPrompt('');
     if(StageEnum.initial === stage){
       setStage(StageEnum.processing);
     }
@@ -209,6 +220,9 @@ export default function CreateDialog(props){
   }
 
   const onProcessing = batchID => dataList =>{
+    if(!mounted){
+      return;
+    }
     setResultList(dataList);
     setTimeout(() => {
       checkBatchCreatingStatus(batchID, onProcessing(batchID), onComplete(batchID), onCreateFail);
@@ -216,13 +230,19 @@ export default function CreateDialog(props){
   }
 
   const onComplete = batchID => dataList =>{
+    if(!mounted){
+      return;
+    }
     setResultList(dataList);
     if(StageEnum.finish !== stage){
+      setOperatable(true);
       setStage(StageEnum.finish);
     }
   }
 
-  const confirmCreate = () =>{
+  const handleConfirm = () =>{
+    setPrompt('');
+    setOperatable(false);
     if (!request.prefix){
       onCreateFail('prefix required');
       return;
@@ -252,7 +272,7 @@ export default function CreateDialog(props){
     if (0 !== request.data_disk){
       disks.push(request.data_disk * GiB);
     }
-    var systemVersion = request.system_version;
+    var systemVersion = request.system_template;
     let fromImage;
     if (defaultOption === request.from_image){
       fromImage = '';
@@ -291,6 +311,9 @@ export default function CreateDialog(props){
   }
 
   const handleRequestPropsChanged = name => e =>{
+    if(!mounted){
+      return;
+    }
     var value = e.target.value
     setRequest(previous => ({
       ...previous,
@@ -299,6 +322,9 @@ export default function CreateDialog(props){
   };
 
   const handleSliderValueChanged = name => (e, value) =>{
+    if(!mounted){
+      return;
+    }
     setRequest(previous => ({
       ...previous,
       [name]: value,
@@ -306,6 +332,9 @@ export default function CreateDialog(props){
   };
 
   const handleCheckedValueChanged = name => e =>{
+    if(!mounted){
+      return;
+    }
     var value = e.target.checked
     setRequest(previous => ({
       ...previous,
@@ -314,6 +343,9 @@ export default function CreateDialog(props){
   };
 
   const handleCheckedGroupChanged = (groupName, propertyName) => e =>{
+    if(!mounted){
+      return;
+    }
     var checked = e.target.checked
     setRequest(previous => ({
       ...previous,
@@ -322,72 +354,73 @@ export default function CreateDialog(props){
   };
 
   React.useEffect(()=>{
-    if (!open || initialed){
+    if (!open){
       return;
     }
-    var poolList = [];
-    var imageList = [{
-      name: texts.blankSystem,
+    var poolOptions = [];
+    var imageOptions = [{
+      label: texts.blankSystem,
       value: defaultOption,
     }];
-    const availableVersions = [
-      {
-        name: 'centos7',
-        label: 'CentOS 7 or Later',
-        allowCI: true,
-      },
-      {
-        name: 'centos6',
-        label: 'CentOS 6',
-        allowCI: true,
-      },
-      {
-        name: 'win2012',
-        label: 'Windows Server 2012',
-        allowCI: false,
-      },
-      {
-        name: 'legacy',
-        label: 'Legacy system',
-        allowCI: true,
-      },
-      {
-        name: 'general',
-        label: 'Other General System',
-        allowCI: true,
-      },
-    ];
+    var templateOptions = [];
 
-    const onQueryImageSuccess = (dataList) =>{
-        dataList.forEach((image)=>{
-          var item = {
-            name: image.name,
-            value: image.id,
-          }
-          imageList.push(item);
-        })
-        setOptions({
-          pools: poolList,
-          images: imageList,
-          versions: availableVersions,
+    setMounted(true);
+    const onQueryTemplateSuccess = dataList =>{
+      if(!mounted){
+        return;
+      }
+      dataList.forEach(({id, name}) =>{
+        templateOptions.push({
+          label: name,
+          value: id,
         });
-        setInitialed(true);
+      });
+      setOptions({
+        pools: poolOptions,
+        images: imageOptions,
+        versions: templateOptions,
+      });
+      setInitialed(true);
+    }
+
+    const onQueryImageSuccess = dataList =>{
+      if(!mounted){
+        return;
+      }
+      dataList.forEach(({name, id})=>{
+        imageOptions.push({
+          label: name,
+          value: id,
+        });
+      })
+      querySystemTemplates(onQueryTemplateSuccess, onCreateFail);
     };
 
-    const onQueryPoolSuccess = (dataList) =>{
-      dataList.forEach((pool)=>{
-        poolList.push(pool.name);
+    const onQueryPoolSuccess = dataList =>{
+      if(!mounted){
+        return;
+      }
+      dataList.forEach(({name})=>{
+        poolOptions.push({
+          label: name,
+          value: name,
+        });
       })
 
       searchDiskImages(onQueryImageSuccess, onCreateFail);
     };
 
     getAllComputePools(onQueryPoolSuccess, onCreateFail);
-
-  }, [initialed, open, texts.blankSystem]);
+    return () => {
+      setMounted(false);
+    }
+  }, [mounted, open, texts.blankSystem, onCreateFail]);
 
 
   const resultToTable = dataList => {
+    if(!mounted){
+      return;
+    }
     var rows = [];
     if(!dataList){
       return <div/>;
@@ -448,43 +481,32 @@ export default function CreateDialog(props){
     );
   }
 
-  //begin render
-  let title;
-  if (!error || '' === error){
-    title = texts.title;
-  }else{
-    title = (
-      <GridItem xs={12}>
-        {texts.title}
-        <SnackbarContent message={error} color="danger"/>
-      </GridItem>
-    );
-  }
-  const cancelButton = (
-    <Button onClick={closeDialog} color="transparent" key='cancel'>
-      {texts.cancel}
-    </Button>
-  );
-  const confirmButton = (
-    <Button onClick={confirmCreate} color="info" key='confirm'>
-      {texts.confirm}
-    </Button>
-  );
-  const finishButton = (
-    <Button onClick={onCreateSuccess} color="info" key='finish'>
-      {texts.finish}
-    </Button>
-  );
+
+  const cancelButton = {
+    color: "transparent",
+    label: texts.cancel,
+    onClick: closeDialog,
+  };
+  const confirmButton = {
+    color: 'info',
+    label: texts.confirm,
+    onClick: handleConfirm,
+  };
+  const finishButton = {
+    color: 'info',
+    label: texts.finish,
+    onClick: onCreateSuccess,
+  };
 
   let content, buttons;
   if (!initialed){
     content = <Skeleton variant="rect" style={{height: '10rem'}}/>;
-    buttons = [cancelButton, confirmButton];
+    buttons = [cancelButton];
   }else{
     switch (stage) {
       case StageEnum.processing:
         content = resultToTable(resultList);
-        if(error){
+        if(prompt){
           buttons = [cancelButton];
         }else{
           buttons = [];
@@ -578,26 +600,16 @@ export default function CreateDialog(props){
         }
 
         let moduleOption;
-        if (request.system_version && defaultOption !== request.from_image){
-          var allowCloudInit = true;
-          const currentVersion = request.system_version;
-          options.versions.some(version =>{
-            if(currentVersion === version.name){
-              allowCloudInit = version.allowCI;
-              return true;
-            }
-            return false;
-          });
+        if (request.system_template && defaultOption !== request.from_image){
           var modules = [{
             value: 'qemu',
             label: 'QEMU-Guest-Agent',
-          }];
-          if (allowCloudInit){
-            modules.push({
-              value: ciModuleName,
-              label: 'CloudInit',
-            });
+          },
+          {
+            value: ciModuleName,
+            label: 'CloudInit',
           }
+          ];
           let ciOptions;
           if (request.modules.get(ciModuleName)){
             //ci checked
@@ -752,8 +764,8 @@ export default function CreateDialog(props){
                     fullWidth
                   >
                     {
-                      options.pools.map((option) =>(
-                        <MenuItem value={option} key={option}>{option}</MenuItem>
+                      options.pools.map((option, key) =>(
+                        <MenuItem value={option.value} key={key}>{option.label}</MenuItem>
                       ))
                     }
                   </Select>
@@ -821,8 +833,8 @@ export default function CreateDialog(props){
                     fullWidth
                   >
                     {
-                      options.images.map((option) =>(
-                        <MenuItem value={option.value} key={option.value}>{option.name}</MenuItem>
+                      options.images.map((option, key) =>(
+                        <MenuItem value={option.value} key={key}>{option.label}</MenuItem>
                       ))
                     }
                   </Select>
@@ -834,8 +846,8 @@ export default function CreateDialog(props){
                 <Box m={0} pb={2}>
                   <InputLabel htmlFor="version">{texts.systemVersion}</InputLabel>
                   <Select
-                    value={request.system_version}
-                    onChange={handleRequestPropsChanged('system_version')}
+                    value={request.system_template}
+                    onChange={handleRequestPropsChanged('system_template')}
                     inputProps={{
                       name: 'version',
                       id: 'version',
@@ -843,8 +855,8 @@ export default function CreateDialog(props){
                     fullWidth
                   >
                     {
-                      options.versions.map((version) =>(
-                        <MenuItem value={version.name} key={version.name}>{version.label}</MenuItem>
+                      options.versions.map((option, key) =>(
+                        <MenuItem value={option.value} key={key}>{option.label}</MenuItem>
                       ))
                     }
                   </Select>
@@ -950,25 +962,6 @@ export default function CreateDialog(props){
         );
     }
   }
-
-  return (
-    <Dialog
-      open={open}
-      aria-labelledby={texts.title}
-      maxWidth='md'
-      fullWidth
-    >
-      <DialogTitle>{title}</DialogTitle>
-      <DialogContent>
-        <Grid container>
-          <GridItem xs={12}>
-            {content}
-          </GridItem>
-        </Grid>
-      </DialogContent>
-      <DialogActions>
-        {buttons}
-      </DialogActions>
-    </Dialog>
-  )
+  return <CustomDialog size='md' open={open} prompt={prompt} promptPosition="top"
+    hideBackdrop title={title}  buttons={buttons} content={content} operatable={operatable}/>;
 };

@@ -130,10 +130,14 @@ export default function MigrateInstancesDialog(props){
   }, [mounted, open, sourcePool, sourceCell, onMigrateFail, texts.offline]);
 
   //begin render
-  let content, buttons;
+  var buttons = [{
+    color: 'transparent',
+    label: texts.cancel,
+    onClick: closeDialog,
+  }];
+  let content;
   if (!initialed){
     content = <Skeleton variant="rect" style={{height: '10rem'}}/>;
-    buttons = [];
   }else{
     const inputs = [
       {
@@ -169,18 +173,13 @@ export default function MigrateInstancesDialog(props){
 
     content = <InputList inputs={inputs}/>
 
-    buttons = [
-      {
-        color: 'transparent',
-        label: texts.cancel,
-        onClick: closeDialog,
-      },
+    buttons.push(
       {
         color: 'info',
         label: texts.confirm,
         onClick: handleConfirm,
-      },
-    ];
+      }
+    );
 
   }
 

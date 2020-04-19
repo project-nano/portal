@@ -12,6 +12,8 @@ import FormControl from '@material-ui/core/FormControl';
 import FormLabel from '@material-ui/core/FormLabel';
 import Grid from "@material-ui/core/Grid";
 import Box from '@material-ui/core/Box';
+import FormGroup from '@material-ui/core/FormGroup';
+import Checkbox from '@material-ui/core/Checkbox';
 
 function InputComponent(props){
   const { type, label, value, onChange, required, oneRow, disabled, options, ...rest } = props;
@@ -27,6 +29,42 @@ function InputComponent(props){
             margin="normal"
             required={required}
             disabled={disabled}
+            fullWidth
+          />
+        </Box>
+      )
+      break;
+    case "file":
+      component = (
+        <Box m={0} pt={2}>
+          <TextField
+            label={label}
+            onChange={onChange}
+            type="file"
+            margin="normal"
+            required={required}
+            disabled={disabled}
+            fullWidth
+          />
+        </Box>
+      )
+      break;
+    case "textarea":
+      var { rows } = props;
+      if (rows < 2) {
+        rows = 3
+      }
+      component = (
+        <Box m={0} pt={2}>
+          <TextField
+            label={label}
+            onChange={onChange}
+            value={value}
+            margin="normal"
+            required={required}
+            disabled={disabled}
+            rowsMax={rows}
+            multiline
             fullWidth
           />
         </Box>
@@ -89,6 +127,39 @@ function InputComponent(props){
         </Box>
       )
       break;
+    case "checkbox":
+      component = (
+        <Box m={0} pt={2}>
+          <FormControl component="fieldset" fullWidth>
+            <FormLabel component="legend">{label}</FormLabel>
+            <FormGroup>
+              <Grid container>
+                {
+                    options.map((option, key) => {
+                      const tagValue = option.value;
+                      const tagLabel = option.label;
+                      let checked;
+                      if (value.has(tagValue)){
+                        checked = value.get(tagValue);
+                      }else{
+                        checked = false;
+                      }
+                      return (
+                        <Grid item xs={6} sm={3} key={key}>
+                          <FormControlLabel
+                            control={<Checkbox checked={checked} onChange={onChange(tagValue)} value={tagValue}/>}
+                            label={tagLabel}
+                          />
+                        </Grid>
+                      )
+                    })
+                }
+              </Grid>
+            </FormGroup>
+          </FormControl>
+        </Box>
+      )
+      break;
     default:
       return <div/>;
   }
@@ -110,9 +181,9 @@ function InputComponent(props){
 }
 
 InputComponent.propTypes = {
-  type: PropTypes.oneOf(["text", "select", "radio", "switch"]).isRequired,
+  type: PropTypes.oneOf(["text", "textarea", "file", "select", "radio", "switch", "checkbox"]).isRequired,
   label: PropTypes.string.isRequired,
-  value: PropTypes.any.isRequired,
+  value: PropTypes.any,
   onChange: PropTypes.func,
   required: PropTypes.bool,
   oneRow: PropTypes.bool,
@@ -123,6 +194,7 @@ InputComponent.propTypes = {
   xl: PropTypes.number,
   on: PropTypes.string,
   off: PropTypes.string,
+  rows: PropTypes.number,
   options: PropTypes.arrayOf(
     PropTypes.shape({
       label: PropTypes.string.isRequired,

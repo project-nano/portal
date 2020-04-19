@@ -1,10 +1,5 @@
 import React from "react";
 // @material-ui/core components
-import Grid from "@material-ui/core/Grid";
-import Dialog from '@material-ui/core/Dialog';
-import DialogActions from '@material-ui/core/DialogActions';
-import DialogContent from '@material-ui/core/DialogContent';
-import DialogTitle from '@material-ui/core/DialogTitle';
 import Table from '@material-ui/core/Table';
 import TableBody from '@material-ui/core/TableBody';
 import TableCell from '@material-ui/core/TableCell';
@@ -14,9 +9,7 @@ import TableContainer from '@material-ui/core/TableContainer';
 import Paper from '@material-ui/core/Paper';
 
 // dashboard components
-import Button from "components/CustomButtons/Button.js";
-import GridItem from "components/Grid/GridItem.js";
-import SnackbarContent from "components/Snackbar/SnackbarContent.js";
+import CustomDialog from "components/Dialog/CustomDialog.js";
 import { batchStoppingGuests, checkBatchStoppingStatus } from 'nano_api.js';
 
 const i18n = {
@@ -58,32 +51,51 @@ export default function BatchStopDialog(props){
   const { lang, targets, open, onSuccess, onCancel } = props;
   const [ stage, setStage ] = React.useState(StageEnum.initial);
   const [ resultList, setResultList ] = React.useState(null);
-  const [ error, setError ] = React.useState('');
+  const [ operatable, setOperatable ] = React.useState(true);
+  const [ prompt, setPrompt ] = React.useState('');
+  const [ mounted, setMounted ] = React.useState(false);
   const texts = i18n[lang];
-  const onStopFail = (msg) =>{
-    setError(msg);
+  const title = texts.title;
+  const onStopFail = React.useCallback(msg =>{
+    if(!mounted){
+      return;
+    }
+    setOperatable(true);
+    setPrompt(msg);
+  }, [mounted]);
+
+  const resetDialog = () => {
+    setPrompt('');
+    setStage(StageEnum.initial);
   }
 
   const closeDialog = ()=>{
-    setStage(StageEnum.initial);
-    setError('');
+    resetDialog();
     onCancel();
   }
 
   const onStopSuccess = () =>{
+    if(!mounted){
+      return;
+    }
     setStage(StageEnum.initial);
-    setError('');
+    setPrompt('');
     onSuccess();
   }
 
-  const confirmStop = () =>{
+  const handleConfirm = () =>{
+    setPrompt('');
+    setOperatable(false);
     if (!targets || 0 === targets.length){
-      setError('no target selecetd');
+      onStopFail('no target selecetd');
       return;
     }
 
     var batchID;
     const onProcessing = dataList =>{
+      if(!mounted){
+        return;
+      }
       setResultList(dataList);
       setTimeout(()=> {
         checkBatchStoppingStatus(batchID, onProcessing, onComplete, onStopFail)
@@ -91,13 +103,20 @@ export default function BatchStopDialog(props){
     }
 
     const onComplete = dataList =>{
+      if(!mounted){
+        return;
+      }
       setResultList(dataList);
       if(StageEnum.finish !== stage){
+        setOperatable(true);
         setStage(StageEnum.finish);
       }
     }
 
     const onAccept = id => {
+      if(!mounted){
+        return;
+      }
       if(StageEnum.initial === stage){
         setStage(StageEnum.processing);
       }
@@ -108,32 +127,21 @@ export default function BatchStopDialog(props){
     batchStoppingGuests(targets, onAccept, onStopFail);
   }
 
-  //begin render
-  let prompt;
-  if (!error || '' === error){
-    prompt = <GridItem xs={12}/>;
-  }else{
-    prompt = (
-      <GridItem xs={12}>
-        <SnackbarContent message={error} color="danger"/>
-      </GridItem>
-    );
-  }
-  const cancelButton = (
-    <Button onClick={closeDialog} color="transparent" key='cancel'>
-      {texts.cancel}
-    </Button>
-  );
-  const confirmButton = (
-    <Button onClick={confirmStop} color="info" key='confirm'>
-      {texts.confirm}
-    </Button>
-  );
-  const finishButton = (
-    <Button onClick={onStopSuccess} color="info" key='finish'>
-      {texts.finish}
-    </Button>
-  );
+  const cancelButton = {
+    color: "transparent",
+    label: texts.cancel,
+    onClick: closeDialog,
+  };
+  const confirmButton = {
+    color: 'info',
+    label: texts.confirm,
+    onClick: handleConfirm,
+  };
+  const finishButton = {
+    color: 'info',
+    label: texts.finish,
+    onClick: onStopSuccess,
+  };
 
   const resultToTable = dataList => {
     var rows = [];
@@ -188,11 +196,16 @@ export default function BatchStopDialog(props){
     );
   }
 
+  React.useEffect(() =>{
+    setMounted(true);
+    return () => setMounted(false);
+  }, []);
+
   let content, buttons;
   switch (stage) {
     case StageEnum.processing:
       content = resultToTable(resultList);
-      if(error){
+      if(prompt){
         buttons = [cancelButton];
       }else{
         buttons = [];
@@ -208,25 +221,6 @@ export default function BatchStopDialog(props){
       buttons = [cancelButton, confirmButton];
   }
 
-  return (
-    <Dialog
-      open={open}
-      aria-labelledby={texts.title}
-      maxWidth="sm"
-      fullWidth
-    >
-      <DialogTitle>{texts.title}</DialogTitle>
-      <DialogContent>
-        <Grid container>
-          <GridItem xs={12}>
-            {content}
-          </GridItem>
-          {prompt}
-        </Grid>
-      </DialogContent>
-      <DialogActions>
-        {buttons}
-      </DialogActions>
-    </Dialog>
-  )
+  return <CustomDialog size='sm' open={open} prompt={prompt} promptPosition="top"
+    hideBackdrop title={title}  buttons={buttons} content={content} operatable={operatable}/>;
 };

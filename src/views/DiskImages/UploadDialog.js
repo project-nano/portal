@@ -1,26 +1,10 @@
 import React from "react";
-// @material-ui/core components
 import Grid from "@material-ui/core/Grid";
-import Box from '@material-ui/core/Box';
-import Dialog from '@material-ui/core/Dialog';
-import DialogActions from '@material-ui/core/DialogActions';
-import DialogContent from '@material-ui/core/DialogContent';
-import DialogTitle from '@material-ui/core/DialogTitle';
 import Skeleton from '@material-ui/lab/Skeleton';
-import TextField from '@material-ui/core/TextField';
-import FormControlLabel from '@material-ui/core/FormControlLabel';
-import FormControl from '@material-ui/core/FormControl';
-import FormLabel from '@material-ui/core/FormLabel';
-import FormGroup from '@material-ui/core/FormGroup';
-import Checkbox from '@material-ui/core/Checkbox';
 import LinearProgress from '@material-ui/core/LinearProgress';
 import Typography from '@material-ui/core/Typography';
-
-// dashboard components
-import Button from "components/CustomButtons/Button.js";
-import GridItem from "components/Grid/GridItem.js";
-import SingleRow from "components/Grid/SingleRow.js";
-import SnackbarContent from "components/Snackbar/SnackbarContent.js";
+import InputList from "components/CustomInput/InputList";
+import CustomDialog from "components/Dialog/CustomDialog.js";
 import { createDiskImage, deleteDiskImage, uploadDiskImage } from 'nano_api.js';
 
 const i18n = {
@@ -57,19 +41,26 @@ export default function UploadDialog(props){
   const [ initialed, setInitialed ] = React.useState(false);
   const [ uploading, setUploading ] = React.useState(false);
   const [ progress, setProgress ] = React.useState(0);
-  const [ error, setError ] = React.useState('');
+  const [ operatable, setOperatable ] = React.useState(true);
+  const [ prompt, setPrompt ] = React.useState('');
+  const [ mounted, setMounted ] = React.useState(false);
   const [ request, setRequest ] = React.useState(defaultValues);
   const [ options, setOptions ] = React.useState({
     tags: [],
   });
 
   const texts = i18n[lang];
-  const onUploadFail = (msg) =>{
-    setError(msg);
-  }
+  const title = texts.title;
+  const onUploadFail = React.useCallback(msg =>{
+    if(!mounted){
+      return;
+    }
+    setOperatable(true);
+    setPrompt(msg);
+  }, [mounted]);
 
   const resetDialog = () => {
-    setError('');
+    setPrompt('');
     setRequest(defaultValues);
     setInitialed(false);
     setUploading(false);
@@ -81,16 +72,25 @@ export default function UploadDialog(props){
     onCancel();
   }
 
-  const onUploadSuccess = (imageID) =>{
+  const onUploadSuccess = imageID =>{
+    if(!mounted){
+      return;
+    }
+    setOperatable(true);
     resetDialog();
     onSuccess(imageID);
   }
 
-  const onUploadProgress = (progress) => {
+  const onUploadProgress = progress => {
+    if(!mounted){
+      return;
+    }
     setProgress(progress);
   }
 
-  const confirmUpload = () =>{
+  const handleConfirm = () =>{
+    setPrompt('');
+    setOperatable(false);
     const imageName = request.name;
     if ('' === imageName){
       onUploadFail('must specify image name');
@@ -124,6 +124,9 @@ export default function UploadDialog(props){
     }
 
     const onCreateSuccess = (imageID) => {
+      if(!mounted){
+        return;
+      }
       const onDeleteSuccess = () =>{
         onUploadFail('new image ' + imageName + ' deleted');
       }
@@ -141,6 +144,9 @@ export default function UploadDialog(props){
   }
 
   const handleRequestPropsChanged = name => e =>{
+    if(!mounted){
+      return;
+    }
     var value = e.target.value
     setRequest(previous => ({
       ...previous,
@@ -149,6 +155,9 @@ export default function UploadDialog(props){
   };
 
   const handleTagsChanged = name => e =>{
+    if(!mounted){
+      return;
+    }
     var value = e.target.checked
     setRequest(previous => ({
       ...previous,
@@ -157,6 +166,9 @@ export default function UploadDialog(props){
   };
 
   const handleFileChanged = name => e =>{
+    if(!mounted){
+      return;
+    }
     var file = e.target.files[0];
     setRequest(previous => ({
       ...previous,
@@ -165,7 +177,7 @@ export default function UploadDialog(props){
   };
 
   React.useEffect(()=>{
-    if (!open || initialed){
+    if (!open){
       return;
     }
     const imageTags = [
@@ -177,158 +189,98 @@ export default function UploadDialog(props){
       ['32bit', '32Bit']
     ];
 
-    const onQueryTagSuccess = (dataList) => {
-      setOptions({
-        tags: dataList,
+    setMounted(true);
+    var tagOptions = [];
+    imageTags.forEach(tag =>{
+      tagOptions.push({
+        label: tag[1],
+        value: tag[0],
       });
-      setInitialed(true);
-    };
+    });
+    setOptions({
+      tags: tagOptions,
+    });
+    setInitialed(true);
 
-    //dummy query
-    onQueryTagSuccess(imageTags);
-
-  }, [initialed, open]);
+    return () => {
+      setMounted(false);
+    }
+  }, [open]);
 
   //begin render
+  var buttons = [{
+    color: 'transparent',
+    label: texts.cancel,
+    onClick: closeDialog,
+  }];
   let content;
   if (!initialed){
     content = <Skeleton variant="rect" style={{height: '10rem'}}/>;
   }else if(uploading){
     content = (
       <Grid container>
-        <SingleRow>
-          <GridItem xs={12}>
-            <LinearProgress variant="determinate" value={progress} />
-          </GridItem>
-        </SingleRow>
-        <SingleRow>
-          <GridItem xs={12}>
-            <Typography align="center">
-              {progress.toFixed(2) + '%'}
-            </Typography>
-          </GridItem>
-        </SingleRow>
+        <Grid item xs={12}>
+          <LinearProgress variant="determinate" value={progress} />
+        </Grid>
+        <Grid item xs={12}>
+          <Typography align="center">
+            {progress.toFixed(2) + '%'}
+          </Typography>
+        </Grid>
       </Grid>
     )
   }else{
-    content = (
-      <Grid container>
-        <SingleRow>
-          <GridItem xs={8}>
-            <Box m={0} pt={2}>
-              <TextField
-                label={texts.name}
-                onChange={handleRequestPropsChanged('name')}
-                value={request.name}
-                margin="normal"
-                required
-                fullWidth
-              />
-            </Box>
-          </GridItem>
-        </SingleRow>
-        <SingleRow>
-          <GridItem xs={12}>
-            <Box m={0} pt={2}>
-              <TextField
-                label={texts.description}
-                onChange={handleRequestPropsChanged('description')}
-                value={request.description}
-                margin="normal"
-                rowsMax="4"
-                required
-                fullWidth
-                multiline
-              />
-            </Box>
-          </GridItem>
-        </SingleRow>
-        <SingleRow>
-          <GridItem xs={12}>
-            <Box m={0} pt={2}>
-              <FormControl component="fieldset" fullWidth>
-                <FormLabel component="legend">{texts.tags}</FormLabel>
-                <FormGroup>
-                  <Grid container>
-                    {
-                        options.tags.map(tag => {
-                          const tagValue = tag[0];
-                          const tagLabel = tag[1];
-                          let checked;
-                          if (request.tags.has(tagValue)){
-                            checked = request.tags.get(tagValue);
-                          }else{
-                            checked = false;
-                          }
-                          return (
-                            <GridItem xs={6} sm={3} key={tagValue}>
-                              <FormControlLabel
-                                control={<Checkbox checked={checked} onChange={handleTagsChanged(tagValue)} value={tagValue}/>}
-                                label={tagLabel}
-                              />
-                            </GridItem>
-                          )
-                        })
-                    }
-                  </Grid>
-                </FormGroup>
-              </FormControl>
-            </Box>
-          </GridItem>
-        </SingleRow>
-        <SingleRow>
-          <GridItem xs={12}>
-            <Box m={0} pt={2}>
-              <TextField
-                label={texts.file}
-                onChange={handleFileChanged('file')}
-                margin="normal"
-                type="file"
-                required
-                fullWidth
-              />
-            </Box>
-          </GridItem>
-        </SingleRow>
-      </Grid>
+    const inputs = [
+      {
+        type: "text",
+        label: texts.name,
+        value: request.name,
+        onChange: handleRequestPropsChanged('name'),
+        required: true,
+        oneRow: true,
+        xs: 8,
+      },
+      {
+        type: "textarea",
+        label: texts.description,
+        value: request.description,
+        onChange: handleRequestPropsChanged('description'),
+        required: true,
+        oneRow: true,
+        rows: 4,
+        xs: 12,
+      },
+      {
+        type: "checkbox",
+        label: texts.tags,
+        onChange: handleTagsChanged,
+        value: request.tags,
+        options: options.tags,
+        required: true,
+        oneRow: true,
+        xs: 10,
+      },
+      {
+        type: "file",
+        label: texts.file,
+        onChange: handleFileChanged('file'),
+        required: true,
+        oneRow: true,
+        xs: 12,
+      },
+    ];
+
+    content = <InputList inputs={inputs}/>
+
+    buttons.push(
+      {
+        color: 'info',
+        label: texts.confirm,
+        onClick: handleConfirm,
+      }
     );
   }
 
-  let prompt;
-  if (!error || '' === error){
-    prompt = <GridItem xs={12}/>;
-  }else{
-    prompt = (
-      <GridItem xs={12}>
-        <SnackbarContent message={error} color="danger"/>
-      </GridItem>
-    );
-  }
-
-  return (
-    <Dialog
-      open={open}
-      aria-labelledby={texts.title}
-      maxWidth='sm'
-      fullWidth      
-    >
-      <DialogTitle>{texts.title}</DialogTitle>
-      <DialogContent>
-        <Grid container>
-          <GridItem xs={12}>
-            {content}
-          </GridItem>
-          {prompt}
-        </Grid>
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={closeDialog} color="transparent" autoFocus>
-          {texts.cancel}
-        </Button>
-        <Button onClick={confirmUpload} color="info">
-          {texts.confirm}
-        </Button>
-      </DialogActions>
-    </Dialog>
-  )
+  return <CustomDialog size='sm' open={open} prompt={prompt} hideBackdrop
+    title={title}  buttons={buttons} content={content} operatable={operatable}/>;
 };

@@ -2,10 +2,6 @@ import React from "react";
 // @material-ui/core components
 import Grid from "@material-ui/core/Grid";
 import Box from '@material-ui/core/Box';
-import Dialog from '@material-ui/core/Dialog';
-import DialogActions from '@material-ui/core/DialogActions';
-import DialogContent from '@material-ui/core/DialogContent';
-import DialogTitle from '@material-ui/core/DialogTitle';
 import Skeleton from '@material-ui/lab/Skeleton';
 import TextField from '@material-ui/core/TextField';
 import MenuItem from '@material-ui/core/MenuItem';
@@ -29,11 +25,11 @@ import LinearProgress from '@material-ui/core/LinearProgress';
 import Typography from '@material-ui/core/Typography';
 
 // dashboard components
-import Button from "components/CustomButtons/Button.js";
 import GridItem from "components/Grid/GridItem.js";
 import SingleRow from "components/Grid/SingleRow.js";
-import SnackbarContent from "components/Snackbar/SnackbarContent.js";
-import { getAllComputePools, searchDiskImages, createInstance, getInstanceConfig } from 'nano_api.js';
+import CustomDialog from "components/Dialog/CustomDialog.js";
+import { getAllComputePools, searchDiskImages, createInstance,
+  getInstanceConfig, querySystemTemplates } from 'nano_api.js';
 
 const i18n = {
   'en':{
@@ -118,7 +114,7 @@ export default function CreateDialog(props){
     system_disk: 5,
     data_disk: 0,
     auto_start: false,
-    system_version: 'centos7',
+    system_template: '',
     from_image: defaultOption,
     modules: new Map(),
     module_cloud_init_admin_name: 'root',
@@ -132,7 +128,9 @@ export default function CreateDialog(props){
   const [ initialed, setInitialed ] = React.useState(false);
   const [ creating, setCreating ] = React.useState(false);
   const [ progress, setProgress ] = React.useState(0);
-  const [ error, setError ] = React.useState('');
+  const [ operatable, setOperatable ] = React.useState(true);
+  const [ prompt, setPrompt ] = React.useState('');
+  const [ mounted, setMounted ] = React.useState(false);
   const [ request, setRequest ] = React.useState(defaultValues);
   const [ options, setOptions ] = React.useState({
     pools: [],
@@ -140,11 +138,17 @@ export default function CreateDialog(props){
     versions: [],
   });
   const texts = i18n[lang];
-  const onCreateFail = (msg) =>{
-    setError(msg);
-  }
+  const title = texts.title;
+  const onCreateFail = React.useCallback(msg =>{
+    if(!mounted){
+      return;
+    }
+    setOperatable(true);
+    setPrompt(msg);
+  }, [mounted]);
+
   const resetDialog = () => {
-    setError('');
+    setPrompt('');
     setRequest(defaultValues);
     setInitialed(false);
     setCreating(false);
@@ -157,11 +161,18 @@ export default function CreateDialog(props){
   }
 
   const onCreateSuccess = result =>{
+    if(!mounted){
+      return;
+    }
+    setOperatable(true);
     resetDialog();
     onSuccess(result.id);
   }
 
-  const onCreateAccept = (instanceID) =>{
+  const onCreateAccept = instanceID =>{
+    if(!mounted){
+      return;
+    }
     setCreating(true);
     setProgress(0);
     setTimeout(() => {
@@ -169,8 +180,14 @@ export default function CreateDialog(props){
     }, checkInterval);
   }
 
-  const checkCreatingProgress = (instanceID) =>{
-    const onCreating = (progress) =>{
+  const checkCreatingProgress = instanceID =>{
+    if(!mounted){
+      return;
+    }
+    const onCreating = progress =>{
+      if(!mounted){
+        return;
+      }
       setProgress(progress);
       setTimeout(() => {
         checkCreatingProgress(instanceID)
@@ -179,7 +196,9 @@ export default function CreateDialog(props){
     getInstanceConfig(instanceID, onCreateSuccess, onCreateFail, onCreating);
   }
 
-  const confirmCreate = () =>{
+  const handleConfirm = () =>{
+    setPrompt('');
+    setOperatable(false);
     if (!request.name){
       onCreateFail('instance name required');
       return;
@@ -203,7 +222,7 @@ export default function CreateDialog(props){
     if (0 !== request.data_disk){
       disks.push(request.data_disk * GiB);
     }
-    var systemVersion = request.system_version;
+    var systemVersion = request.system_template;
     let fromImage;
     if (defaultOption === request.from_image){
       fromImage = '';
@@ -242,6 +261,9 @@ export default function CreateDialog(props){
   }
 
   const handleRequestPropsChanged = name => e =>{
+    if(!mounted){
+      return;
+    }
     var value = e.target.value
     setRequest(previous => ({
       ...previous,
@@ -250,6 +272,9 @@ export default function CreateDialog(props){
   };
 
   const handleSliderValueChanged = name => (e, value) =>{
+    if(!mounted){
+      return;
+    }
     setRequest(previous => ({
       ...previous,
       [name]: value,
@@ -257,6 +282,9 @@ export default function CreateDialog(props){
   };
 
   const handleCheckedValueChanged = name => e =>{
+    if(!mounted){
+      return;
+    }
     var value = e.target.checked
     setRequest(previous => ({
       ...previous,
@@ -265,6 +293,9 @@ export default function CreateDialog(props){
   };
 
   const handleCheckedGroupChanged = (groupName, propertyName) => e =>{
+    if(!mounted){
+      return;
+    }
     var checked = e.target.checked
     setRequest(previous => ({
       ...previous,
@@ -273,71 +304,74 @@ export default function CreateDialog(props){
   };
 
   React.useEffect(()=>{
-    if (!open || initialed){
+    if (!open){
       return;
     }
-    var poolList = [];
-    var imageList = [{
-      name: texts.blankSystem,
+    var poolOptions = [];
+    var imageOptions = [{
+      label: texts.blankSystem,
       value: defaultOption,
     }];
-    const availableVersions = [
-      {
-        name: 'centos7',
-        label: 'CentOS 7 or Later',
-        allowCI: true,
-      },
-      {
-        name: 'centos6',
-        label: 'CentOS 6',
-        allowCI: true,
-      },
-      {
-        name: 'win2012',
-        label: 'Windows Server 2012',
-        allowCI: false,
-      },
-      {
-        name: 'legacy',
-        label: 'Legacy system',
-        allowCI: true,
-      },
-      {
-        name: 'general',
-        label: 'Other General System',
-        allowCI: true,
-      },
-    ];
+    var templateOptions = [];
 
-    const onQueryImageSuccess = (dataList) =>{
-        dataList.forEach((image)=>{
-          var item = {
-            name: image.name,
-            value: image.id,
-          }
-          imageList.push(item);
-        })
-        setOptions({
-          pools: poolList,
-          images: imageList,
-          versions: availableVersions,
+    setMounted(true);
+    const onQueryTemplateSuccess = dataList =>{
+      if(!mounted){
+        return;
+      }
+      dataList.forEach(({id, name}) =>{
+        templateOptions.push({
+          label: name,
+          value: id,
         });
-        setInitialed(true);
+      });
+      setOptions({
+        pools: poolOptions,
+        images: imageOptions,
+        versions: templateOptions,
+      });
+      setInitialed(true);
+    }
+
+    const onQueryImageSuccess = dataList =>{
+      if(!mounted){
+        return;
+      }
+      dataList.forEach(({name, id})=>{
+        imageOptions.push({
+          label: name,
+          value: id,
+        });
+      })
+      querySystemTemplates(onQueryTemplateSuccess, onCreateFail);
     };
 
-    const onQueryPoolSuccess = (dataList) =>{
-      dataList.forEach((pool)=>{
-        poolList.push(pool.name);
+    const onQueryPoolSuccess = dataList =>{
+      if(!mounted){
+        return;
+      }
+      dataList.forEach(({name})=>{
+        poolOptions.push({
+          label: name,
+          value: name,
+        });
       })
 
       searchDiskImages(onQueryImageSuccess, onCreateFail);
     };
 
     getAllComputePools(onQueryPoolSuccess, onCreateFail);
-
-  }, [initialed, open, texts.blankSystem]);
+    return () => {
+      setMounted(false);
+    }
+  }, [mounted, open, texts.blankSystem, onCreateFail]);
 
   //begin render
+  var buttons = [{
+    color: 'transparent',
+    label: texts.cancel,
+    onClick: closeDialog,
+  }];
   let content;
   if (!initialed){
     content = <Skeleton variant="rect" style={{height: '10rem'}}/>;
@@ -440,26 +474,16 @@ export default function CreateDialog(props){
     }
 
     let moduleOption;
-    if (request.system_version && defaultOption !== request.from_image){
-      var allowCloudInit = true;
-      const currentVersion = request.system_version;
-      options.versions.some(version =>{
-        if(currentVersion === version.name){
-          allowCloudInit = version.allowCI;
-          return true;
-        }
-        return false;
-      });
+    if (request.system_template && defaultOption !== request.from_image){
       var modules = [{
         value: 'qemu',
         label: 'QEMU-Guest-Agent',
-      }];
-      if (allowCloudInit){
-        modules.push({
-          value: ciModuleName,
-          label: 'CloudInit',
-        });
+      },
+      {
+        value: ciModuleName,
+        label: 'CloudInit',
       }
+      ];
       let ciOptions;
       if (request.modules.get(ciModuleName)){
         //ci checked
@@ -543,7 +567,6 @@ export default function CreateDialog(props){
       moduleOption = <GridItem/>;
     }
 
-
     content = (
       <Grid container>
         <SingleRow>
@@ -575,8 +598,8 @@ export default function CreateDialog(props){
                 fullWidth
               >
                 {
-                  options.pools.map((option) =>(
-                    <MenuItem value={option} key={option}>{option}</MenuItem>
+                  options.pools.map((option, key) =>(
+                    <MenuItem value={option.value} key={key}>{option.label}</MenuItem>
                   ))
                 }
               </Select>
@@ -644,8 +667,8 @@ export default function CreateDialog(props){
                 fullWidth
               >
                 {
-                  options.images.map((option) =>(
-                    <MenuItem value={option.value} key={option.value}>{option.name}</MenuItem>
+                  options.images.map((option, key) =>(
+                    <MenuItem value={option.value} key={key}>{option.label}</MenuItem>
                   ))
                 }
               </Select>
@@ -657,8 +680,8 @@ export default function CreateDialog(props){
             <Box m={0} pb={2}>
               <InputLabel htmlFor="version">{texts.systemVersion}</InputLabel>
               <Select
-                value={request.system_version}
-                onChange={handleRequestPropsChanged('system_version')}
+                value={request.system_template}
+                onChange={handleRequestPropsChanged('system_template')}
                 inputProps={{
                   name: 'version',
                   id: 'version',
@@ -666,8 +689,8 @@ export default function CreateDialog(props){
                 fullWidth
               >
                 {
-                  options.versions.map((version) =>(
-                    <MenuItem value={version.name} key={version.name}>{version.label}</MenuItem>
+                  options.versions.map((option, key) =>(
+                    <MenuItem value={option.value} key={key}>{option.label}</MenuItem>
                   ))
                 }
               </Select>
@@ -771,42 +794,12 @@ export default function CreateDialog(props){
       </SingleRow>
     </Grid>
     );
+    buttons.push({
+        color: 'info',
+        label: texts.confirm,
+        onClick: handleConfirm,
+      });
   }
-
-  let title;
-  if (!error || '' === error){
-    title = texts.title;
-  }else{
-    title = (
-      <GridItem xs={12}>
-        {texts.title}
-        <SnackbarContent message={error} color="danger"/>
-      </GridItem>
-    );
-  }
-  return (
-    <Dialog
-      open={open}
-      aria-labelledby={texts.title}
-      maxWidth='md'
-      fullWidth
-    >
-      <DialogTitle>{title}</DialogTitle>
-      <DialogContent>
-        <Grid container>
-          <GridItem xs={12}>
-            {content}
-          </GridItem>
-        </Grid>
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={closeDialog} color="transparent" autoFocus>
-          {texts.cancel}
-        </Button>
-        <Button onClick={confirmCreate} color="info">
-          {texts.confirm}
-        </Button>
-      </DialogActions>
-    </Dialog>
-  )
+  return <CustomDialog size='md' open={open} prompt={prompt} promptPosition="top"
+    hideBackdrop title={title}  buttons={buttons} content={content} operatable={operatable}/>;
 };

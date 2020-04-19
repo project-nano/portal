@@ -176,10 +176,14 @@ const ModifyDialog = (props) =>{
   }, [mounted, open, pool, texts.localStorage, texts.noAddressPool, onModifyFail]);
 
   //begin render
-  let content, buttons;
+  var buttons = [{
+    color: 'transparent',
+    label: texts.cancel,
+    onClick: closeDialog,
+  }];
+  let content;
   if (!initialed){
     content = <Skeleton variant="rect" style={{height: '10rem'}}/>;
-    buttons = [];
   }else{
     const inputs = [
       {
@@ -216,18 +220,13 @@ const ModifyDialog = (props) =>{
 
     content = <InputList inputs={inputs}/>
 
-    buttons = [
-      {
-        color: 'transparent',
-        label: texts.cancel,
-        onClick: closeDialog,
-      },
+    buttons.push(
       {
         color: 'info',
         label: texts.confirm,
         onClick: handleConfirm,
-      },
-    ];
+      }
+    );
   }
 
   return <CustomDialog size='sm' open={open} prompt={prompt}

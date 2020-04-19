@@ -1,8 +1,8 @@
 import axios from "axios";
 import { getLoggedSession } from 'utils.js';
 
-const apiRoot = 'http://201.18.21.153:5870/api/v1';
-// const apiRoot = 'http://192.168.3.26:5870/api/v1';
+// const apiRoot = 'http://201.18.21.153:5870/api/v1';
+const apiRoot = 'http://192.168.3.26:5870/api/v1';
 // const apiRoot = 'http://192.168.1.111:5870/api/v1';
 // const apiRoot = '/api/v1';
 const HeaderNanoSession = "Nano-Session";
@@ -267,6 +267,22 @@ export function getComputeCell(poolName, cellName, onSuccess, onFail){
   getRequest(url, onSuccess, onFail);
 }
 
+export function queryComputeCellStorages(poolName, cellName, onSuccess, onFail){
+  const url = '/compute_cell_status/' + poolName + '/' + cellName + "/storages/";
+  getRequest(url, onSuccess, onFail);
+}
+
+export function changeComputeCellStorage(poolName, cellName, pathName, onSuccess, onFail){
+  const url = '/compute_cell_status/' + poolName + '/' + cellName + "/storages/";
+  var payload = {
+    default: pathName,
+  };
+  const onOperateSuccess = () =>{
+    onSuccess(cellName, poolName);
+  }
+  putRequest(url, payload, onOperateSuccess, onFail)
+}
+
 //Storage Pools
 export function getAllStoragePools(onSuccess, onFail){
   getRequest('/storage_pools/', onSuccess, onFail);
@@ -431,7 +447,7 @@ export function createInstance(name, pool, cores, memory, disks, autoStartup,
       disks: disks,
       auto_start: autoStartup,
       from_image: fromImage,
-      system_version: systemVersion,
+      template: systemVersion,
     };
     if (modules){
       request.modules = modules;
@@ -548,6 +564,14 @@ export function resetSystem(instanceID, imageID, onSuccess, onFail){
     from_image: imageID,
   }
   putRequest('/guests/' + instanceID + '/system/', request, onOperateSuccess, onFail);
+}
+
+export function resetMonitorSecret(instanceID, onSuccess, onFail){
+  const url = "/guests/" + instanceID + "/monitor/secret";
+  const onOperateSuccess = () =>{
+    onSuccess(instanceID);
+  }
+  putRequest(url, "", onOperateSuccess, onFail);
 }
 
 export function modifyInstanceName(instanceID, name, onSuccess, onFail){
@@ -782,7 +806,10 @@ export function deleteMediaImage(id, onSuccess, onFail){
 
 export function uploadMediaImage(id, file, onProgress, onSuccess, onFail){
   var url = '/media_images/' + id + '/file/';
-  uploadBinary(url, 'image', file, onProgress, onSuccess, onFail);
+  const onOperateSuccess = () =>{
+    onSuccess(id);
+  }
+  uploadBinary(url, 'image', file, onProgress, onOperateSuccess, onFail);
 }
 
 //disk Images
@@ -848,7 +875,10 @@ export function deleteDiskImage(id, onSuccess, onFail){
 
 export function uploadDiskImage(id, file, onProgress, onSuccess, onFail){
   var url = '/disk_images/' + id + '/file/';
-  uploadBinary(url, 'image', file, onProgress, onSuccess, onFail);
+  const onOperateSuccess = () =>{
+    onSuccess(id);
+  }
+  uploadBinary(url, 'image', file, onProgress, onOperateSuccess, onFail);
 }
 
 //batch operates
@@ -870,7 +900,7 @@ export function batchCreatingGuests(rule, prefix, count, pool, cores, memory, di
       disks: disks,
       auto_start: autoStartup,
       from_image: fromImage,
-      system_version: systemVersion,
+      template: systemVersion,
     };
     if (prefix){
       request.name_prefix = prefix;
@@ -975,6 +1005,72 @@ export function checkBatchStoppingStatus(batchID, onProcessing, onSuccess, onFai
 }
 
 //management
+//system templates
+export function querySystemTemplates(onSuccess, onFail){
+  const url = "/templates/";
+  getRequest(url, onSuccess, onFail);
+}
+
+export function getSystemTemplate(templateID, onSuccess, onFail){
+  const url = "/templates/" + templateID;
+  getRequest(url, onSuccess, onFail);
+}
+
+export function createSystemTemplate(name, admin, system, disk, network, display,
+  control, usb, tablet, onSuccess, onFail) {
+    const url = "/templates/";
+    var payload = {
+      name: name,
+      admin: admin,
+      operating_system: system,
+      disk: disk,
+      network: network,
+      display: display,
+      control: control,
+    }
+    if (usb){
+      payload.usb = usb;
+    }
+    if (tablet){
+      payload.tablet = tablet;
+    }
+    const onOperateSuccess = ({id}) =>{
+      onSuccess(id);
+    }
+    postRequest(url, payload, onOperateSuccess, onFail);
+}
+
+export function modifySystemTemplate(id, name, admin, system, disk, network, display,
+  control, usb, tablet, onSuccess, onFail) {
+    const url = "/templates/" + id;
+    var payload = {
+      name: name,
+      admin: admin,
+      operating_system: system,
+      disk: disk,
+      network: network,
+      display: display,
+      control: control,
+    }
+    if (usb){
+      payload.usb = usb;
+    }
+    if (tablet){
+      payload.tablet = tablet;
+    }
+    const onOperateSuccess = () =>{
+      onSuccess(id);
+    }
+    putRequest(url, payload, onOperateSuccess, onFail);
+}
+
+export function deleteSystemTemplate(templateID, onSuccess, onFail){
+  const url = "/templates/" + templateID;
+  const onOperateSuccess = () =>{
+    onSuccess(templateID);
+  }
+  deleteRequest(url, "", onOperateSuccess, onFail);
+}
 
 //roles
 export function queryAllRoles(onSuccess, onFail){
