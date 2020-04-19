@@ -290,7 +290,7 @@ export default function ZoneStatus(props) {
           series={storageData}
           displayValue={value =>{
             if (Number.isInteger(value)){
-              return value.toString + ' GB';
+              return value.toString() + ' GB';
             }else{
               return value.toFixed(2) + ' GB';
             }

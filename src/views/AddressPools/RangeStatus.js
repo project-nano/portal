@@ -1,10 +1,6 @@
 import React from "react";
 // @material-ui/core components
 import { makeStyles } from "@material-ui/core/styles";
-import { Link } from "react-router-dom";
-import TableRow from "@material-ui/core/TableRow";
-import TableCell from "@material-ui/core/TableCell";
-import IconButton from "@material-ui/core/IconButton";
 import Skeleton from '@material-ui/lab/Skeleton';
 import NavigateBeforeIcon from '@material-ui/icons/NavigateBefore';
 import Divider from '@material-ui/core/Divider';
@@ -20,23 +16,11 @@ import CardBody from "components/Card/CardBody.js";
 import Info from "components/Typography/Info.js";
 import Snackbar from "components/Snackbar/Snackbar.js";
 import Button from "components/CustomButtons/Button.js";
-import OperableTable from "components/Table/OperableTable.js";
-import { getLoggedSession, logoutSession, redirectToLogin } from 'utils.js';
+import Table from "components/Table/ObjectTable.js";
+import IconButton from "components/CustomButtons/IconButton.js";
 import { getAddressRangeStatus } from "nano_api.js";
 
 const styles = {
-  cardCategoryWhite: {
-    "&,& a,& a:hover,& a:focus": {
-      color: "rgba(255,255,255,.62)",
-      margin: "0",
-      fontSize: "14px",
-      marginTop: "0",
-      marginBottom: "0"
-    },
-    "& a,& a:hover,& a:focus": {
-      color: "#FFFFFF"
-    }
-  },
   cardTitleWhite: {
     color: "#FFFFFF",
     marginTop: "0px",
@@ -67,6 +51,7 @@ const i18n = {
     noAllocated: 'No address allocated',
     allocatedAddress: 'Allocated Address',
     instance: 'Instance',
+    detail: 'Detail',
   },
   'cn':{
     back: '返回',
@@ -78,16 +63,30 @@ const i18n = {
     noAllocated: '未分配地址',
     allocatedAddress: '已分配地址',
     instance: '云主机实例',
+    detail: '详情',
   }
+}
+
+function dataToAllocated(data, buttons){
+  const { address, instance } = data;
+  const operates = buttons.map((button, key) => (
+    React.createElement(IconButton, {
+      ...button,
+      key: key,
+    })
+  ))
+  return [address, instance].concat(operates);
 }
 
 export default function RangeStatus(props){
     const poolName = props.match.params.pool;
     const rangeType = props.match.params.type;
     const startAddress = props.match.params.start;
+    const { lang } = props;
+    const texts = i18n[lang];
     const classes = useStyles();
+    const [ mounted, setMounted ] = React.useState(false);
     const [ status, setStatus ] = React.useState(null);
-
     const [ notifyColor, setNotifyColor ] = React.useState('warning');
     const [ notifyMessage, setNotifyMessage ] = React.useState("");
 
@@ -95,20 +94,28 @@ export default function RangeStatus(props){
       setNotifyMessage("");
     }
 
-    const showErrorMessage = React.useCallback((msg) => {
+    const showErrorMessage = React.useCallback(msg => {
+      if (!mounted){
+        return;
+      }
       const notifyDuration = 3000;
       setNotifyColor('warning');
       setNotifyMessage(msg);
       setTimeout(closeNotify, notifyDuration);
-    }, [setNotifyColor, setNotifyMessage]);
+    }, [setNotifyColor, setNotifyMessage, mounted]);
 
     const reloadRangeStatus = React.useCallback(() => {
+      if (!mounted){
+        return;
+      }
       const onLoadFail = (err) =>{
+        if (!mounted){
+          return;
+        }
         showErrorMessage(err);
-        logoutSession();
       }
       getAddressRangeStatus(poolName, rangeType, startAddress, setStatus, onLoadFail);
-    }, [showErrorMessage, poolName, rangeType, startAddress]);
+    }, [showErrorMessage, poolName, rangeType, startAddress, mounted]);
 
     // const showNotifyMessage = (msg) => {
     //   const notifyDuration = 3000;
@@ -118,38 +125,23 @@ export default function RangeStatus(props){
     // };
 
     React.useEffect(() =>{
+      setMounted(true);
       reloadRangeStatus();
+      return () =>{
+        setMounted(false);
+      }
     }, [reloadRangeStatus]);
 
-
-    //reder begin
-    var session = getLoggedSession();
-    if (null === session){
-      return redirectToLogin();
-    }
-    const { lang } = props;
-    const texts = i18n[lang];
+    //begin rendering
     let content;
     if (null === status){
       content = <Skeleton variant="rect" style={{height: '10rem'}}/>;
     }else{
       const internalContent = (
-        <OperableTable
+        <Table
           color="primary"
           headers={[texts.startAddress, texts.endAddress, texts.netmask]}
-          rows={[
-            <TableRow className={classes.tableBodyRow} key='current'>
-              <TableCell className={classes.tableCell}>
-                {startAddress}
-              </TableCell>
-              <TableCell className={classes.tableCell}>
-                {status.end}
-              </TableCell>
-              <TableCell className={classes.tableCell}>
-                {status.netmask}
-              </TableCell>
-            </TableRow>
-          ]}
+          rows={[[startAddress, status.end, status.netmask]]}
           />
       )
       const internalRanges = (
@@ -165,30 +157,24 @@ export default function RangeStatus(props){
 
       let allocatedContent;
       if (!status.allocated || 0 === status.allocated.length){
-        allocatedContent = <Info>{texts.noAllocated}</Info>;
+        allocatedContent = <Box display="flex" justifyContent="center"><Info>{texts.noAllocated}</Info></Box>;
       }else{
+        var rows = [];
+        status.allocated.forEach( data => {
+          const buttons = [
+            {
+              icon: VisibilityIcon,
+              label: texts.detail,
+              href: '/admin/instances/details/' + data.instance,
+            },
+          ];
+          rows.push(dataToAllocated(data, buttons));
+        });
         allocatedContent = (
-          <OperableTable
+          <Table
             color="primary"
             headers={[texts.allocatedAddress, texts.instance, '']}
-            rows={
-              status.allocated.map((allocated, key) =>(
-                <TableRow className={classes.tableBodyRow} key={key}>
-                  <TableCell className={classes.tableCell}>
-                    {allocated.address}
-                  </TableCell>
-                  <TableCell className={classes.tableCell}>
-                    {allocated.instance}
-                  </TableCell>
-                  <TableCell className={classes.tableCell}>
-                    <Link to={'/admin/instances/details/' + allocated.instance}>
-                      <IconButton color="inherit">
-                        <VisibilityIcon/>
-                      </IconButton>
-                    </Link>
-                  </TableCell>
-                </TableRow>
-              ))}
+            rows={rows}
             />
         )
       }

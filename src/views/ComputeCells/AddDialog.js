@@ -1,20 +1,7 @@
 import React from "react";
-// @material-ui/core components
-import Grid from "@material-ui/core/Grid";
-import Box from '@material-ui/core/Box';
-import Dialog from '@material-ui/core/Dialog';
-import DialogActions from '@material-ui/core/DialogActions';
-import DialogContent from '@material-ui/core/DialogContent';
-import DialogTitle from '@material-ui/core/DialogTitle';
 import Skeleton from '@material-ui/lab/Skeleton';
-import MenuItem from '@material-ui/core/MenuItem';
-import Select from '@material-ui/core/Select';
-import InputLabel from '@material-ui/core/InputLabel';
-
-// dashboard components
-import Button from "components/CustomButtons/Button.js";
-import GridItem from "components/Grid/GridItem.js";
-import SnackbarContent from "components/Snackbar/SnackbarContent.js";
+import InputList from "components/CustomInput/InputList";
+import CustomDialog from "components/Dialog/CustomDialog.js";
 import { queryUnallocatedComputeCells, addComputeCell } from 'nano_api.js';
 
 const i18n = {
@@ -38,16 +25,19 @@ const AddDialog = (props) =>{
   };
   const { lang, pool, open, onSuccess, onCancel } = props;
   const [ initialed, setInitialed ] = React.useState(false);
-  const [ error, setError ] = React.useState('');
+  const [ operatable, setOperatable ] = React.useState(true);
+  const [ prompt, setPrompt ] = React.useState('');
   const [ request, setRequest ] = React.useState(defaultValues);
   const [ options, setOptions ] = React.useState([]);
-
   const texts = i18n[lang];
-  const onAddFail = (msg) =>{
-    setError(msg);
+  const title = texts.title;
+
+  const onAddFail = msg =>{
+    setOperatable(true);
+    setPrompt(msg);
   }
   const resetDialog = () => {
-    setError('');
+    setPrompt('');
     setRequest(defaultValues);
     setInitialed(false);
   }
@@ -57,11 +47,13 @@ const AddDialog = (props) =>{
   }
 
   const onAddSuccess = (poolName, cellName) =>{
+    setOperatable(true);
     resetDialog();
     onSuccess(cellName);
   }
 
-  const confirmAdd = () =>{
+  const handleConfirm = () =>{
+    setOperatable(false);
     const cellName = request.cell;
     if ('' === cellName){
       onAddFail('must select a cell');
@@ -87,7 +79,7 @@ const AddDialog = (props) =>{
       var cellList = [];
       dataList.forEach((cell)=>{
         var item = {
-          name: cell.address ? cell.name + ' (' + cell.address + ')' : cell.name,
+          label: cell.address ? cell.name + ' (' + cell.address + ')' : cell.name,
           value: cell.name,
         }
         cellList.push(item);
@@ -105,73 +97,41 @@ const AddDialog = (props) =>{
   }, [initialed, open]);
 
   //begin render
-  let content;
+  let content, buttons;
   if (!initialed){
     content = <Skeleton variant="rect" style={{height: '10rem'}}/>;
+    buttons = [];
   }else{
-    content = (
-      <Grid container>
-        <GridItem xs={8}>
-          <Box m={1} p={2}>
-          <InputLabel htmlFor="cell">{texts.name}</InputLabel>
-          <Select
-            value={request.cell}
-            onChange={handleRequestPropsChanged('cell')}
-            inputProps={{
-              name: 'cell',
-              id: 'cell',
-            }}
-            autoWidth
-          >
-            {
-              options.map((option) =>(
-                <MenuItem value={option.value} key={option.value}>{option.name}</MenuItem>
-              ))
-            }
-          </Select>
-          </Box>
-        </GridItem>
-      </Grid>
-    );
+    const inputs = [
+      {
+        type: "select",
+        label: texts.name,
+        onChange: handleRequestPropsChanged('cell'),
+        value: request.cell,
+        options: options,
+        required: true,
+        oneRow: true,
+        xs: 8,
+      },
+    ];
+    content = <InputList inputs={inputs}/>
+
+    buttons = [
+      {
+        color: 'transparent',
+        label: texts.cancel,
+        onClick: closeDialog,
+      },
+      {
+        color: 'info',
+        label: texts.confirm,
+        onClick: handleConfirm,
+      },
+    ];
   }
 
-  let prompt;
-  if (!error || '' === error){
-    prompt = <GridItem xs={12}/>;
-  }else{
-    prompt = (
-      <GridItem xs={12}>
-        <SnackbarContent message={error} color="danger"/>
-      </GridItem>
-    );
-  }
-
-  return (
-    <Dialog
-      open={open}
-      aria-labelledby={texts.title}
-      maxWidth="sm"
-      fullWidth
-    >
-      <DialogTitle>{texts.title}</DialogTitle>
-      <DialogContent>
-        <Grid container>
-          <GridItem xs={12}>
-            {content}
-          </GridItem>
-          {prompt}
-        </Grid>
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={closeDialog} color="transparent" autoFocus>
-          {texts.cancel}
-        </Button>
-        <Button onClick={confirmAdd} color="info">
-          {texts.confirm}
-        </Button>
-      </DialogActions>
-    </Dialog>
-  )
+  return <CustomDialog size='sm' open={open} prompt={prompt}
+    title={title}  buttons={buttons} content={content} operatable={operatable}/>;
 };
 
 export default AddDialog;

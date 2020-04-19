@@ -48,6 +48,8 @@ const i18n = {
 
 export default function LoggedUser(props){
   const classes = useStyles();
+  const [ mounted, setMounted ] = React.useState(false)
+  const [ username, setUsername] = React.useState("")
   const [ openProfile, setOpenProfile ] = React.useState(null);
   const [ isLogged, setLogged ] = React.useState(()=>{
     return (null !== getLoggedSession());
@@ -131,40 +133,44 @@ export default function LoggedUser(props){
     changeUserPassword(session.user, dialogParams.old, dialogParams.new, onModifiedSuccess, displayError);
   }
 
-  //mount/unmount only
-  React.useEffect(() =>{
-    var mounted = true;
-    const onUpdateFail = (msg) =>{
+  const keepAlive = React.useCallback(() => {
+    const onUpdateFail = () =>{
       logoutSession();
       if (mounted){
         setLogged(false);
       }
     }
+    updateSession(onUpdateFail);
+  }, [mounted]);
 
+  //mount/unmount only
+  React.useEffect(() =>{
+    setMounted(true);
+    keepAlive();
     var session = getLoggedSession();
     if (null === session){
       return;
     }
-    updateSession(onUpdateFail);
+
+    if (mounted){
+      setUsername(session.user);
+    }
+
     var updateInterval = session.timeout * 1000 * 2 / 3;
     // var updateInterval = 3000;
     var timerID = setInterval(()=>{
-      updateSession(onUpdateFail);
+      keepAlive();
     }, updateInterval);
     return () => {
-      mounted = false;
+      setMounted(false);
       clearInterval(timerID);
     }
 
-  }, []);
+  }, [mounted, keepAlive]);
 
   //render begin
   const texts = i18n[props.lang];
   if (!isLogged){
-    return redirectToLogin();
-  }
-  var session = getLoggedSession();
-  if (null === session) {
     return redirectToLogin();
   }
 
@@ -189,7 +195,7 @@ export default function LoggedUser(props){
         onClick={handleClickProfile}
         className={classes.buttonLink}
       >
-        {session.user}
+        {username}
         <Person className={classes.icons} />
       </Button>
       <Poppers

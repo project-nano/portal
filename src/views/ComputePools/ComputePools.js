@@ -7,6 +7,13 @@ import Breadcrumbs from '@material-ui/core/Breadcrumbs';
 import Typography from '@material-ui/core/Typography';
 import Divider from '@material-ui/core/Divider';
 import Box from '@material-ui/core/Box';
+import CheckIcon from '@material-ui/icons/Check';
+import BlockIcon from '@material-ui/icons/Block';
+import ViewQuiltIcon from '@material-ui/icons/ViewQuilt';
+import CloudQueueIcon from '@material-ui/icons/CloudQueue';
+import DeleteIcon from '@material-ui/icons/Delete';
+import SettingsIcon from '@material-ui/icons/Settings';
+import Tooltip from "@material-ui/core/Tooltip";
 
 // dashboard components
 import GridItem from "components/Grid/GridItem.js";
@@ -17,27 +24,16 @@ import CardBody from "components/Card/CardBody.js";
 import Info from "components/Typography/Info.js";
 import Snackbar from "components/Snackbar/Snackbar.js";
 import Button from "components/CustomButtons/Button.js";
-import OperableTable from "components/Table/OperableTable.js";
-import PoolRow from "views/ComputePools/PoolRow.js";
+import Table from "components/Table/ObjectTable.js";
+import IconButton from "components/CustomButtons/IconButton.js";
 import DeleteDialog from "views/ComputePools/DeleteDialog.js";
 import CreateDialog from "views/ComputePools/CreateDialog.js";
 import ModifyDialog from "views/ComputePools/ModifyDialog.js";
-import { getLoggedSession, logoutSession, redirectToLogin } from 'utils.js';
+import fontStyles from "assets/jss/material-dashboard-react/components/typographyStyle.js";
 import { getAllComputePools, writeLog } from "nano_api.js";
 
 const styles = {
-  cardCategoryWhite: {
-    "&,& a,& a:hover,& a:focus": {
-      color: "rgba(255,255,255,.62)",
-      margin: "0",
-      fontSize: "14px",
-      marginTop: "0",
-      marginBottom: "0"
-    },
-    "& a,& a:hover,& a:focus": {
-      color: "#FFFFFF"
-    }
-  },
+  ...fontStyles,
   cardTitleWhite: {
     color: "#FFFFFF",
     marginTop: "0px",
@@ -70,6 +66,17 @@ const i18n = {
     operates: "Operates",
     noPools: "No compute pool available",
     computePools: "Compute Pools",
+    enable: 'Enable',
+    disable: 'Disable',
+    enabled: 'Enabled',
+    disabled: 'Disabled',
+    instances: 'Instances',
+    modify: 'Modify',
+    delete: 'Delete',
+    on: 'on',
+    off: 'off',
+    localStorage: 'Use local storage',
+    noAddressPool: "Don't use address pool",
   },
   'cn':{
     createButton: "创建资源池",
@@ -83,19 +90,31 @@ const i18n = {
     operates: "操作",
     noPools: "没有计算资源池",
     computePools: "计算资源池",
+    enable: '启用',
+    disable: '禁用',
+    enabled: '已启用',
+    disabled: '已禁用',
+    instances: '云主机实例',
+    modify: '修改',
+    delete: '删除',
+    on: '开启',
+    off: '关闭',
+    localStorage: '使用本地存储',
+    noAddressPool: "不使用地址池",
   }
 }
 
 export default function ComputePools(props){
     const classes = useStyles();
-    const [ poolList, setPoolList ] = React.useState(null);
+    const { lang } = props;
+    const texts = i18n[lang];
+    const [ mounted, setMounted ] = React.useState(false);
+    const [ dataList, setDataList ] = React.useState(null);
     //for dialog
-    const [ dialogSwitch, setDialogSwitch] = React.useState({
-      create: false,
-      modify: false,
-      delete: false,
-      current: '',
-    });
+    const [ createDialogVisible, setCreateDialogVisible ] = React.useState(false);
+    const [ modifyDialogVisible, setModifyDialogVisible ] = React.useState(false);
+    const [ deleteDialogVisible, setDeleteDialogVisible ] = React.useState(false);
+    const [ selected, setSelected ] = React.useState('');
 
     const [ notifyColor, setNotifyColor ] = React.useState('warning');
     const [ notifyMessage, setNotifyMessage ] = React.useState("");
@@ -104,24 +123,33 @@ export default function ComputePools(props){
       setNotifyMessage("");
     }
 
-    const showErrorMessage = React.useCallback((msg) => {
+    const showErrorMessage = React.useCallback(msg => {
+      if (!mounted){
+        return;
+      }
       const notifyDuration = 3000;
       setNotifyColor('warning');
       setNotifyMessage(msg);
       setTimeout(closeNotify, notifyDuration);
-    }, [setNotifyColor, setNotifyMessage]);
+    }, [setNotifyColor, setNotifyMessage, mounted]);
 
-    const reloadAllComputePools = React.useCallback(() => {
-      const onLoadFail = (err) =>{
-        showErrorMessage(err);
-        logoutSession();
+    const reloadAllData = React.useCallback(() => {
+      if (!mounted){
+        return;
       }
-      getAllComputePools(setPoolList, onLoadFail);
-    }, [showErrorMessage]);
+      const onLoadFail = (err) =>{
+        if (!mounted){
+          return;
+        }
+        showErrorMessage(err);
+      }
+      getAllComputePools(setDataList, onLoadFail);
+    }, [showErrorMessage, mounted]);
 
-
-
-    const showNotifyMessage = (msg) => {
+    const showNotifyMessage = msg => {
+      if (!mounted){
+        return;
+      }
       const notifyDuration = 3000;
       setNotifyColor('info');
       setNotifyMessage(msg);
@@ -131,102 +159,146 @@ export default function ComputePools(props){
 
     //modify
     const showModifyDialog = (poolName) =>{
-      setDialogSwitch( previous =>({
-        ...previous,
-        modify: true,
-        current: poolName,
-      }));
+      setModifyDialogVisible(true);
+      setSelected(poolName);
     }
 
     const closeModifyDialog = () =>{
-      setDialogSwitch( previous =>({
-        ...previous,
-        modify: false,
-      }));
+      setModifyDialogVisible(false);
     }
 
-    const onModifySuccess = (poolName) =>{
+    const onModifySuccess = poolName =>{
       closeModifyDialog();
       showNotifyMessage('pool ' + poolName + ' modified');
-      reloadAllComputePools();
+      reloadAllData();
     };
 
     //delete
-    const showDeleteDialog = (poolName) =>{
-      setDialogSwitch( previous =>({
-        ...previous,
-        delete: true,
-        current: poolName,
-      }));
+    const showDeleteDialog = poolName =>{
+      setDeleteDialogVisible(true);
+      setSelected(poolName);
     }
 
     const closeDeleteDialog = () =>{
-      setDialogSwitch( previous =>({
-        ...previous,
-        delete: false,
-      }));
+      setDeleteDialogVisible(false);
     }
 
     const onDeleteSuccess = (poolName) =>{
       closeDeleteDialog();
       showNotifyMessage('pool ' + poolName + ' deleted');
-      reloadAllComputePools();
+      reloadAllData();
     };
 
     //create
     const showCreateDialog = () =>{
-      setDialogSwitch( previous =>({
-        ...previous,
-        create: true,
-      }));
+      setCreateDialogVisible(true);
     };
 
     const closeCreateDialog = () =>{
-      setDialogSwitch( previous =>({
-        ...previous,
-        create: false,
-      }));
+      setCreateDialogVisible(false);
     }
 
     const onCreateSuccess = (poolName) =>{
       closeCreateDialog();
       showNotifyMessage('pool ' + poolName + ' created');
-      reloadAllComputePools();
+      reloadAllData();
     };
 
     React.useEffect(() =>{
-      reloadAllComputePools();
-    }, [reloadAllComputePools]);
+      setMounted(true);
+      reloadAllData();
+      return () =>{
+        setMounted(false);
+      }
+    }, [reloadAllData]);
 
-
-    //reder begin
-    var session = getLoggedSession();
-    if (null === session){
-      return redirectToLogin();
-    }
-    const { lang } = props;
-    const texts = i18n[lang];
+    //begin rendering
     let content;
-    if (null === poolList){
+    if (null === dataList){
       content = <Skeleton variant="rect" style={{height: '10rem'}}/>;
-    }else if (0 === poolList.length){
-      content = <Info>{texts.noPools}</Info>;
+    }else if (0 === dataList.length){
+      content = <Box display="flex" justifyContent="center"><Info>{texts.noPools}</Info></Box>;
     }else{
+      var rows = [];
+      dataList.forEach( pool => {
+        var buttons = [
+          {
+            label: texts.cells,
+            icon: ViewQuiltIcon,
+            href: '/admin/compute_cells/?pool=' + pool.name,
+          },
+          {
+            label: texts.instances,
+            icon: CloudQueueIcon,
+            href: '/admin/instances/range/?pool=' + pool.name,
+          },
+          {
+            onClick: e => showModifyDialog(pool.name),
+            icon: SettingsIcon,
+            label: texts.modify,
+          },
+          {
+            onClick: e => showDeleteDialog(pool.name),
+            icon: DeleteIcon,
+            label: texts.delete,
+          },
+        ];
+
+        const { name, cells, network, storage, enabled, failover } = pool;
+        let statusLabel, statusIcon, failoverLabel;
+        if (enabled){
+          statusLabel = texts.enabled;
+          statusIcon = (
+            <Tooltip
+              title={statusLabel}
+              placement="top"
+              >
+              <CheckIcon className={classes.successText}/>
+            </Tooltip>
+          );
+          const disableButton = {
+            label: texts.disable,
+            icon: BlockIcon,
+          };
+          buttons = [disableButton].concat(buttons);
+        }else{
+          statusLabel = texts.disabled;
+          statusIcon = (
+            <Tooltip
+              title={statusLabel}
+              placement="top"
+              >
+              <BlockIcon className={classes.warningText}/>
+            </Tooltip>
+          );
+          const enableButton = {
+            label: texts.enable,
+            icon: CheckIcon,
+          };
+          buttons = [enableButton].concat(buttons);
+        }
+
+        if (failover){
+          failoverLabel = texts.on;
+        }else{
+          failoverLabel = texts.off;
+        }
+
+        const operates = buttons.map((button, key) => (
+          React.createElement(IconButton, {
+            ...button,
+            key: key,
+          })
+        ))
+        var row = [name, cells, network? network: texts.noAddressPool,
+          storage? storage: texts.localStorage, failoverLabel, statusIcon, operates];
+        rows.push(row);
+      });
       content = (
-        <OperableTable
+        <Table
           color="primary"
           headers={[texts.name, texts.cells, texts.network, texts.storage, texts.failover, texts.status, texts.operates]}
-          rows={
-            poolList.map(pool =>(
-              <PoolRow
-                key={pool.name}
-                pool={pool}
-                lang={lang}
-                onModify={showModifyDialog}
-                onDelete={showDeleteDialog}
-                />
-            ))}
-          />
+          rows={rows}/>
       );
     }
 
@@ -272,7 +344,7 @@ export default function ComputePools(props){
         <GridItem>
           <CreateDialog
             lang={lang}
-            open={dialogSwitch.create}
+            open={createDialogVisible}
             onSuccess={onCreateSuccess}
             onCancel={closeCreateDialog}
             />
@@ -280,8 +352,8 @@ export default function ComputePools(props){
         <GridItem>
           <ModifyDialog
             lang={lang}
-            open={dialogSwitch.modify}
-            pool={dialogSwitch.current}
+            open={modifyDialogVisible}
+            pool={selected}
             onSuccess={onModifySuccess}
             onCancel={closeModifyDialog}
             />
@@ -289,8 +361,8 @@ export default function ComputePools(props){
         <GridItem>
           <DeleteDialog
             lang={lang}
-            open={dialogSwitch.delete}
-            pool={dialogSwitch.current}
+            open={deleteDialogVisible}
+            pool={selected}
             onSuccess={onDeleteSuccess}
             onCancel={closeDeleteDialog}
             />

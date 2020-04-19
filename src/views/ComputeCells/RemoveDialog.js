@@ -1,15 +1,5 @@
 import React from "react";
-// @material-ui/core components
-import Grid from "@material-ui/core/Grid";
-import Dialog from '@material-ui/core/Dialog';
-import DialogActions from '@material-ui/core/DialogActions';
-import DialogContent from '@material-ui/core/DialogContent';
-import DialogTitle from '@material-ui/core/DialogTitle';
-
-// dashboard components
-import Button from "components/CustomButtons/Button.js";
-import GridItem from "components/Grid/GridItem.js";
-import SnackbarContent from "components/Snackbar/SnackbarContent.js";
+import CustomDialog from "components/Dialog/CustomDialog.js";
 import { removeComputeCell } from 'nano_api.js';
 
 const i18n = {
@@ -29,64 +19,47 @@ const i18n = {
 
 const RemoveDialog = (props) =>{
   const { lang, pool, cell, open, onSuccess, onCancel } = props;
-  const [ error, setError ] = React.useState('');
+  const [ operatable, setOperatable ] = React.useState(true);
+  const [ prompt, setPrompt ] = React.useState('');
   const texts = i18n[lang];
+  const title = texts.title;
+  const content = texts.content + cell;
   const onRemoveFail = (msg) =>{
-    setError(msg);
+    setOperatable(true);
+    setPrompt(msg);
   }
 
   const closeDialog = ()=>{
-    setError('');
+    setPrompt('');
     onCancel();
   }
 
   const onRemoveSuccess = (poolName, cellName) =>{
-    setError('');
+    setOperatable(true);
+    setPrompt('');
     onSuccess(cellName);
   }
 
-  const confirmRemove = () =>{
+  const handleConfirm = () =>{
+    setOperatable(false);
     removeComputeCell(pool, cell, onRemoveSuccess, onRemoveFail);
   }
 
-  //begin render
-  let prompt;
-  if (!error || '' === error){
-    prompt = <GridItem xs={12}/>;
-  }else{
-    prompt = (
-      <GridItem xs={12}>
-        <SnackbarContent message={error} color="danger"/>
-      </GridItem>
-    );
-  }
-
-  return (
-    <Dialog
-      open={open}
-      aria-labelledby={texts.title}
-      maxWidth="xs"
-      fullWidth
-    >
-      <DialogTitle>{texts.title}</DialogTitle>
-      <DialogContent>
-        <Grid container>
-          <GridItem xs={12}>
-            {texts.content + cell}
-          </GridItem>
-          {prompt}
-        </Grid>
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={closeDialog} color="transparent" autoFocus>
-          {texts.cancel}
-        </Button>
-        <Button onClick={confirmRemove} color="info">
-          {texts.confirm}
-        </Button>
-      </DialogActions>
-    </Dialog>
-  )
+  const buttons = [
+    {
+      color: 'transparent',
+      label: texts.cancel,
+      onClick: closeDialog,
+    },
+    {
+      color: 'info',
+      label:  texts.confirm,
+      onClick: handleConfirm,
+    },
+  ];
+  
+  return <CustomDialog size='xs' open={open} prompt={prompt}
+    title={title}  buttons={buttons} content={content} operatable={operatable}/>;
 };
 
 export default RemoveDialog;

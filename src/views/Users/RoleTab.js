@@ -17,7 +17,7 @@ import GridContainer from "components/Grid/GridContainer.js";
 import Info from "components/Typography/Info.js";
 import Snackbar from "components/Snackbar/Snackbar.js";
 import Button from "components/CustomButtons/Button.js";
-import TooltipButton from "components/CustomButtons/TooltipButton.js";
+import IconButton from "components/CustomButtons/IconButton.js";
 import OperableTable from "components/Table/OperableTable.js";
 import AddRoleDialog from "views/Users/AddRoleDialog";
 import ModifyRoleDialog from "views/Users/ModifyRoleDialog";
@@ -165,8 +165,8 @@ export default function RoleTab(props){
             roleList.map((rolename, key) => {
               const name = rolename;
               var operators = [
-                <TooltipButton key='modify' title={texts.modify} icon={EditIcon} onClick={() => showModifyDialog(name)}/>,
-                <TooltipButton key='remove' title={texts.delete} icon={DeleteIcon} onClick={() => showRemoveDialog(name)}/>,
+                <IconButton key='modify' label={texts.modify} icon={EditIcon} onClick={() => showModifyDialog(name)}/>,
+                <IconButton key='remove' label={texts.delete} icon={DeleteIcon} onClick={() => showRemoveDialog(name)}/>,
               ];
 
               return (

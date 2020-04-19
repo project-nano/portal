@@ -4,6 +4,8 @@ import { makeStyles } from "@material-ui/core/styles";
 import Skeleton from '@material-ui/lab/Skeleton';
 import AddIcon from '@material-ui/icons/Add';
 import Divider from '@material-ui/core/Divider';
+import DeleteIcon from '@material-ui/icons/Delete';
+import SettingsIcon from '@material-ui/icons/Settings';
 import Box from '@material-ui/core/Box';
 
 // dashboard components
@@ -15,12 +17,11 @@ import CardBody from "components/Card/CardBody.js";
 import Info from "components/Typography/Info.js";
 import Snackbar from "components/Snackbar/Snackbar.js";
 import Button from "components/CustomButtons/Button.js";
-import OperableTable from "components/Table/OperableTable.js";
-import PoolRow from "views/StoragePools/PoolRow.js";
+import Table from "components/Table/ObjectTable.js";
+import IconButton from "components/CustomButtons/IconButton.js";
 import DeleteDialog from "views/StoragePools/DeleteDialog.js";
 import CreateDialog from "views/StoragePools/CreateDialog.js";
 import ModifyDialog from "views/StoragePools/ModifyDialog.js";
-import { getLoggedSession, logoutSession, redirectToLogin } from 'utils.js';
 import { getAllStoragePools, writeLog } from "nano_api.js";
 
 const styles = {
@@ -65,6 +66,8 @@ const i18n = {
     target: "Target",
     operates: "Operates",
     noResource: "No storage pool available",
+    modify: 'Modify',
+    delete: 'Delete',
   },
   'cn':{
     createButton: "创建存储资源池",
@@ -75,17 +78,30 @@ const i18n = {
     target: "目标",
     operates: "操作",
     noResource: "没有存储资源池",
+    modify: '修改',
+    delete: '删除',
   }
 }
 
+function dataToNodes(data, buttons){
+  const operates = buttons.map((button, key) => (
+    <IconButton label={button.label} icon={button.icon} onClick={button.onClick} key={key}/>
+  ))
+  const { name, type, host, target } = data;
+  return [ name, type, host, target, operates];
+}
+
 export default function StoragePools(props){
+    const { lang } = props;
+    const texts = i18n[lang];
     const classes = useStyles();
-    const [ poolList, setPoolList ] = React.useState(null);
+    const [ mounted, setMounted ] = React.useState(false);
+    const [ dataList, setDataList ] = React.useState(null);
     //for dialog
     const [ createDialogVisible, setCreateDialogVisible ] = React.useState(false);
     const [ modifyDialogVisible, setModifyDialogVisible ] = React.useState(false);
     const [ deleteDialogVisible, setDeleteDialogVisible ] = React.useState(false);
-    const [ current, setCurrent ] = React.useState('');
+    const [ selected, setSelected ] = React.useState('');
 
     const [ notifyColor, setNotifyColor ] = React.useState('warning');
     const [ notifyMessage, setNotifyMessage ] = React.useState("");
@@ -95,23 +111,32 @@ export default function StoragePools(props){
     }
 
     const showErrorMessage = React.useCallback((msg) => {
+      if (!mounted){
+        return;
+      }
       const notifyDuration = 3000;
       setNotifyColor('warning');
       setNotifyMessage(msg);
       setTimeout(closeNotify, notifyDuration);
-    }, [setNotifyColor, setNotifyMessage]);
+    }, [setNotifyColor, setNotifyMessage, mounted]);
 
-    const reloadAllStoragePools = React.useCallback(() => {
-      const onLoadFail = (err) =>{
-        showErrorMessage(err);
-        logoutSession();
+    const reloadAllData = React.useCallback(() => {
+      if (!mounted){
+        return;
       }
-      getAllStoragePools(setPoolList, onLoadFail);
-    }, [showErrorMessage]);
+      const onLoadFail = err =>{
+        if (!mounted){
+          return;
+        }
+        showErrorMessage(err);
+      }
+      getAllStoragePools(setDataList, onLoadFail);
+    }, [showErrorMessage, mounted]);
 
-
-
-    const showNotifyMessage = (msg) => {
+    const showNotifyMessage = msg => {
+      if (!mounted){
+        return;
+      }
       const notifyDuration = 3000;
       setNotifyColor('info');
       setNotifyMessage(msg);
@@ -122,7 +147,7 @@ export default function StoragePools(props){
     //modify
     const showModifyDialog = (poolName) =>{
       setModifyDialogVisible(true);
-      setCurrent(poolName);
+      setSelected(poolName);
     }
 
     const closeModifyDialog = () =>{
@@ -132,13 +157,13 @@ export default function StoragePools(props){
     const onModifySuccess = (poolName) =>{
       closeModifyDialog();
       showNotifyMessage('pool ' + poolName + ' modified');
-      reloadAllStoragePools();
+      reloadAllData();
     };
 
     //delete
     const showDeleteDialog = (poolName) =>{
       setDeleteDialogVisible(true);
-      setCurrent(poolName);
+      setSelected(poolName);
     }
 
     const closeDeleteDialog = () =>{
@@ -148,7 +173,7 @@ export default function StoragePools(props){
     const onDeleteSuccess = (poolName) =>{
       closeDeleteDialog();
       showNotifyMessage('pool ' + poolName + ' deleted');
-      reloadAllStoragePools();
+      reloadAllData();
     };
 
     //create
@@ -163,43 +188,47 @@ export default function StoragePools(props){
     const onCreateSuccess = (poolName) =>{
       closeCreateDialog();
       showNotifyMessage('pool ' + poolName + ' created');
-      reloadAllStoragePools();
+      reloadAllData();
     };
 
     React.useEffect(() =>{
-      reloadAllStoragePools();
-    }, [reloadAllStoragePools]);
+      setMounted(true);
+      reloadAllData();
+      return () =>{
+        setMounted(false);
+      }
+    }, [reloadAllData]);
 
-
-    //reder begin
-    var session = getLoggedSession();
-    if (null === session){
-      return redirectToLogin();
-    }
-    const { lang } = props;
-    const texts = i18n[lang];
+    //begin rendering
     let content;
-    if (null === poolList){
+    if (null === dataList){
       content = <Skeleton variant="rect" style={{height: '10rem'}}/>;
-    }else if (0 === poolList.length){
-      content = <Info>{texts.noResource}</Info>;
+    }else if (0 === dataList.length){
+      content = <Box display="flex" justifyContent="center"><Info>{texts.noResource}</Info></Box>;
     }else{
+      var rows = [];
+      dataList.forEach( data => {
+        const buttons = [
+          {
+            onClick: e => showModifyDialog(data.name),
+            icon: SettingsIcon,
+            label: texts.modify,
+          },
+          {
+            onClick: e => showDeleteDialog(data.name),
+            icon: DeleteIcon,
+            label: texts.delete,
+          },
+        ];
+        rows.push(dataToNodes(data, buttons));
+      });
       content = (
-        <OperableTable
+        <Table
           color="primary"
           headers={[texts.name, texts.type, texts.host, texts.target, texts.operates]}
-          rows={
-            poolList.map(pool =>(
-              <PoolRow
-                key={pool.name}
-                pool={pool}
-                lang={lang}
-                onModify={showModifyDialog}
-                onDelete={showDeleteDialog}
-                />
-            ))}
-          />
+          rows={rows}/>
       );
+
     }
 
     return (
@@ -248,7 +277,7 @@ export default function StoragePools(props){
           <ModifyDialog
             lang={lang}
             open={modifyDialogVisible}
-            pool={current}
+            pool={selected}
             onSuccess={onModifySuccess}
             onCancel={closeModifyDialog}
             />
@@ -257,7 +286,7 @@ export default function StoragePools(props){
           <DeleteDialog
             lang={lang}
             open={deleteDialogVisible}
-            pool={current}
+            pool={selected}
             onSuccess={onDeleteSuccess}
             onCancel={closeDeleteDialog}
             />

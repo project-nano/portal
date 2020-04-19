@@ -18,7 +18,7 @@ import GridContainer from "components/Grid/GridContainer.js";
 import Info from "components/Typography/Info.js";
 import Snackbar from "components/Snackbar/Snackbar.js";
 import Button from "components/CustomButtons/Button.js";
-import TooltipButton from "components/CustomButtons/TooltipButton.js";
+import IconButton from "components/CustomButtons/IconButton.js";
 import OperableTable from "components/Table/OperableTable.js";
 import AddGroupDialog from "views/Users/AddGroupDialog";
 import ModifyGroupDialog from "views/Users/ModifyGroupDialog";
@@ -171,11 +171,11 @@ export default function GroupTab(props){
             groupList.map((group, key) => {
               const name = group.name;
               var operators = [
-                <TooltipButton key='modify' title={texts.modify} icon={EditIcon} onClick={() => showModifyDialog(name)}/>,
-                <TooltipButton key='member' title={texts.member} icon={GroupIcon} onClick={() => showMembers(name)}/>,
+                <IconButton key='modify' label={texts.modify} icon={EditIcon} onClick={() => showModifyDialog(name)}/>,
+                <IconButton key='member' label={texts.member} icon={GroupIcon} onClick={() => showMembers(name)}/>,
               ];
               if (name !== session.group){
-                operators.push(<TooltipButton key='remove' title={texts.remove} icon={DeleteIcon} onClick={() => showRemoveDialog(name)}/>)
+                operators.push(<IconButton key='remove' label={texts.remove} icon={DeleteIcon} onClick={() => showRemoveDialog(name)}/>)
               }
               return (
                 <TableRow className={classes.tableBodyRow} key={key}>

@@ -171,12 +171,11 @@ const SingleCellStatus = props => {
 
   let content, dataLabels, operators;
   if (!status.alive){
-    content = new Array(4).fill(
-      <GridItem xs={8} sm={6} md={3}>
-        <Box m={0} p={0} className={classes.disableChart} boxShadow={2}>
-        </Box>
+    content = ["core-usage", "memory-usage", "disk-io", "network-io"].map(label=>(
+      <GridItem xs={8} sm={6} md={3} key={label}>
+        <Box m={0} p={0} className={classes.disableChart} boxShadow={2}/>
       </GridItem>
-    );
+    ));
     dataLabels = [];
     operators = [];
   }else{

@@ -8,6 +8,15 @@ import Breadcrumbs from '@material-ui/core/Breadcrumbs';
 import Typography from '@material-ui/core/Typography';
 import Divider from '@material-ui/core/Divider';
 import Box from '@material-ui/core/Box';
+import CheckIcon from '@material-ui/icons/Check';
+import BlockIcon from '@material-ui/icons/Block';
+import CloudQueueIcon from '@material-ui/icons/CloudQueue';
+import DeleteIcon from '@material-ui/icons/Delete';
+import SettingsIcon from '@material-ui/icons/Settings';
+import LocalShippingRoundedIcon from '@material-ui/icons/LocalShippingRounded';
+import WifiRoundedIcon from '@material-ui/icons/WifiRounded';
+import WifiOffRoundedIcon from '@material-ui/icons/WifiOffRounded';
+import Tooltip from "@material-ui/core/Tooltip";
 
 // dashboard components
 import GridItem from "components/Grid/GridItem.js";
@@ -18,29 +27,18 @@ import CardBody from "components/Card/CardBody.js";
 import Info from "components/Typography/Info.js";
 import Snackbar from "components/Snackbar/Snackbar.js";
 import Button from "components/CustomButtons/Button.js";
-import OperableTable from "components/Table/OperableTable.js";
-import CellRow from "views/ComputeCells/CellRow.js";
+import Table from "components/Table/ObjectTable.js";
+import IconButton from "components/CustomButtons/IconButton.js";
 import RemoveDialog from "views/ComputeCells/RemoveDialog.js";
 import AddDialog from "views/ComputeCells/AddDialog.js";
 import DetailDialog from "views/ComputeCells/DetailDialog.js";
 import MigrateDialog from "views/ComputeCells/MigrateDialog";
-import { getLoggedSession, logoutSession, redirectToLogin } from 'utils.js';
-import { queryComputeCellsInPool, writeLog } from "nano_api.js";
+import fontStyles from "assets/jss/material-dashboard-react/components/typographyStyle.js";
+import { queryComputeCellsInPool, modifyComputeCell, writeLog } from "nano_api.js";
 import { useLocation } from "react-router-dom";
 
 const styles = {
-  cardCategoryWhite: {
-    "&,& a,& a:hover,& a:focus": {
-      color: "rgba(255,255,255,.62)",
-      margin: "0",
-      fontSize: "14px",
-      marginTop: "0",
-      marginBottom: "0"
-    },
-    "& a,& a:hover,& a:focus": {
-      color: "#FFFFFF"
-    }
-  },
+  ...fontStyles,
   cardTitleWhite: {
     color: "#FFFFFF",
     marginTop: "0px",
@@ -71,6 +69,16 @@ const i18n = {
     operates: "Operates",
     noResource: "No compute cell available",
     computePools: "Compute Pools",
+    enable: 'Enable',
+    disable: 'Disable',
+    enabled: 'Enabled',
+    disabled: 'Disabled',
+    instances: 'Instances',
+    detail: 'Detail',
+    remove: 'Remove',
+    migrate: 'Migrate',
+    online: "Online",
+    offline: "Offline",
   },
   'cn':{
     addButton: "添加资源节点",
@@ -82,12 +90,25 @@ const i18n = {
     operates: "操作",
     noResource: "没有计算资源节点",
     computePools: "计算资源池",
+    enable: '启用',
+    disable: '禁用',
+    enabled: '已启用',
+    disabled: '已禁用',
+    instances: '云主机实例',
+    detail: '详情',
+    remove: '移除',
+    migrate: '迁移',
+    online: "在线",
+    offline: "离线",
   }
 }
 
 export default function ComputeCells(props){
     const classes = useStyles();
-    const [ cellList, setCellList ] = React.useState(null);
+    const { lang } = props;
+    const texts = i18n[lang];
+    const [ mounted, setMounted ] = React.useState(false);
+    const [ dataList, setDataList ] = React.useState(null);
     const location = useLocation();
     const queryParams = new URLSearchParams(location.search);
     const poolName = queryParams.get("pool");
@@ -97,7 +118,7 @@ export default function ComputeCells(props){
     const [ detailDialogVisible, setDetailDialogVisible ] = React.useState(false);
     const [ removeDialogVisible, setRemoveDialogVisible ] = React.useState(false);
     const [ migrateDialogVisible, setMigrateDialogVisible ] = React.useState(false);
-    const [ currentCell, setCurrentCell ] = React.useState('');
+    const [ selected, setSelected ] = React.useState('');
 
     const [ notifyColor, setNotifyColor ] = React.useState('warning');
     const [ notifyMessage, setNotifyMessage ] = React.useState("");
@@ -107,19 +128,27 @@ export default function ComputeCells(props){
     }
 
     const showErrorMessage = React.useCallback((msg) => {
+      if (!mounted){
+        return;
+      }
       const notifyDuration = 3000;
       setNotifyColor('warning');
       setNotifyMessage(msg);
       setTimeout(closeNotify, notifyDuration);
-    }, [setNotifyColor, setNotifyMessage]);
+    }, [setNotifyColor, setNotifyMessage, mounted]);
 
-    const reloadAllComputeCells = React.useCallback(() => {
-      const onLoadFail = (err) =>{
-        showErrorMessage(err);
-        logoutSession();
+    const reloadAllData = React.useCallback(() => {
+      if (!mounted){
+        return;
       }
-      queryComputeCellsInPool(poolName, setCellList, onLoadFail);
-    }, [poolName, showErrorMessage]);
+      const onLoadFail = (err) =>{
+        if (!mounted){
+          return;
+        }
+        showErrorMessage(err);
+      }
+      queryComputeCellsInPool(poolName, setDataList, onLoadFail);
+    }, [poolName, showErrorMessage, mounted]);
 
     const showNotifyMessage = (msg) => {
       const notifyDuration = 3000;
@@ -132,7 +161,7 @@ export default function ComputeCells(props){
     //detail
     const showDetailDialog = (cellName) =>{
       setDetailDialogVisible(true);
-      setCurrentCell(cellName);
+      setSelected(cellName);
     }
 
     const closeDetailDialog = () =>{
@@ -142,7 +171,7 @@ export default function ComputeCells(props){
     //delete
     const showRemoveDialog = (cellName) =>{
       setRemoveDialogVisible(true);
-      setCurrentCell(cellName);
+      setSelected(cellName);
     }
 
     const closeRemoveDialog = () =>{
@@ -152,7 +181,7 @@ export default function ComputeCells(props){
     const onRemoveSuccess = (cellName) =>{
       closeRemoveDialog();
       showNotifyMessage('cell '+ cellName + ' removed from ' + poolName);
-      reloadAllComputeCells();
+      reloadAllData();
     };
 
     //create
@@ -167,17 +196,13 @@ export default function ComputeCells(props){
     const onAddSuccess = (cellName) =>{
       closeAddDialog();
       showNotifyMessage('cell '+ cellName + ' added to ' + poolName);
-      reloadAllComputeCells();
+      reloadAllData();
     };
-
-    const onStatusChange = () =>{
-      reloadAllComputeCells();
-    }
 
     //migrate instance
     const showMigrateDialog = cellName =>{
       setMigrateDialogVisible(true);
-      setCurrentCell(cellName);
+      setSelected(cellName);
     }
 
     const closeMigrateDialog = () =>{
@@ -186,62 +211,143 @@ export default function ComputeCells(props){
 
     const onMigrateSuccess = () =>{
       closeMigrateDialog();
-      reloadAllComputeCells();
+      reloadAllData();
     };
 
+    const enableCell = cellName =>{
+      const onSuccess = () =>{
+        if (!mounted){
+          return;
+        }
+        reloadAllData();
+      }
+      modifyComputeCell(poolName, cellName, true, onSuccess, showErrorMessage);
+    }
+
+    const disableCell = cellName =>{
+      const onSuccess = () =>{
+        if (!mounted){
+          return;
+        }
+        reloadAllData();
+      }
+      modifyComputeCell(poolName, cellName, false, onSuccess, showErrorMessage);
+    }
+
     React.useEffect(() =>{
-      var mounted = true
-      reloadAllComputeCells();
+      setMounted(true);
+      reloadAllData();
       const updateInterval = 5 * 1000;
       var timerID = setInterval(()=>{
         if (mounted){
-          reloadAllComputeCells();
+          reloadAllData();
         }
       }, updateInterval);
       return () =>{
-        mounted = false;
+        setMounted(false);
         clearInterval(timerID);
       }
-    }, [reloadAllComputeCells]);
+    }, [reloadAllData, mounted]);
 
-    if (!poolName){
-      console.log('pool name omit');
-      return redirectToLogin();
-    }
-    //reder begin
-    var session = getLoggedSession();
-    if (null === session){
-      return redirectToLogin();
-    }
-
-    const { lang } = props;
-    const texts = i18n[lang];
     let content;
-    if (null === cellList){
+    if (null === dataList){
       content = <Skeleton variant="rect" style={{height: '10rem'}}/>;
-    }else if (0 === cellList.length){
-      content = <Info>{texts.noResource}</Info>;
+    }else if (0 === dataList.length){
+      content = <Box display="flex" justifyContent="center"><Info>{texts.noResource}</Info></Box>;
     }else{
+      var rows = [];
+      dataList.forEach( cell => {
+        var buttons = [
+          {
+            label: texts.instances,
+            icon: CloudQueueIcon,
+            href: '/admin/instances/range/?pool=' + poolName + '&cell=' + cell.name,
+          },
+          {
+            onClick: e => showDetailDialog(cell.name),
+            icon: SettingsIcon,
+            label: texts.detail,
+          },
+          {
+            onClick: e => showRemoveDialog(cell.name),
+            icon: DeleteIcon,
+            label: texts.remove,
+          },
+          {
+            onClick: e => showMigrateDialog(cell.name),
+            icon: LocalShippingRoundedIcon,
+            label: texts.migrate,
+          },
+        ];
+
+        const { name, address, enabled, alive } = cell;
+        let statusIcon, aliveIcon;
+        if (enabled){
+          statusIcon = (
+            <Tooltip
+              title={texts.enabled}
+              placement="top"
+              >
+              <CheckIcon className={classes.successText}/>
+            </Tooltip>
+          );
+          const disableButton = {
+            label: texts.disable,
+            icon: BlockIcon,
+            onClick: () => disableCell(name),
+          };
+          buttons = [disableButton].concat(buttons);
+        }else{
+          statusIcon = (
+            <Tooltip
+              title={texts.disabled}
+              placement="top"
+              >
+              <BlockIcon className={classes.warningText}/>
+            </Tooltip>
+          );
+          const enableButton = {
+            label: texts.enable,
+            icon: CheckIcon,
+            onClick: () => enableCell(name),
+          };
+          buttons = [enableButton].concat(buttons);
+        }
+
+        if (alive){
+          aliveIcon = (
+            <Tooltip
+              title={texts.online}
+              placement="top"
+              >
+              <WifiRoundedIcon className={classes.successText}/>
+            </Tooltip>
+          );
+        }else{
+          aliveIcon = (
+            <Tooltip
+              title={texts.offline}
+              placement="top"
+              >
+              <WifiOffRoundedIcon className={classes.warningText}/>
+            </Tooltip>
+          );
+        }
+
+        const operates = buttons.map((button, key) => (
+          React.createElement(IconButton, {
+            ...button,
+            key: key,
+          })
+        ))
+        var row = [name, address, aliveIcon, statusIcon, operates];
+        rows.push(row);
+      });
       content = (
-        <OperableTable
+        <Table
           color="primary"
           headers={[texts.name, texts.address, texts.alive, texts.status, texts.operates]}
-          rows={
-            cellList.map(cell =>(
-              <CellRow
-                key={cell.name}
-                poolName={poolName}
-                cell={cell}
-                lang={lang}
-                onNotify={showNotifyMessage}
-                onError={showErrorMessage}
-                onDetail={showDetailDialog}
-                onRemove={showRemoveDialog}
-                onMigrate={showMigrateDialog}
-                onStatusChange={onStatusChange}
-                />
-            ))}
-          />
+          rows={rows}/>
       );
     }
 
@@ -301,7 +407,7 @@ export default function ComputeCells(props){
             lang={lang}
             open={detailDialogVisible}
             pool={poolName}
-            cell={currentCell}
+            cell={selected}
             onCancel={closeDetailDialog}
             />
         </GridItem>
@@ -310,7 +416,7 @@ export default function ComputeCells(props){
             lang={lang}
             open={removeDialogVisible}
             pool={poolName}
-            cell={currentCell}
+            cell={selected}
             onSuccess={onRemoveSuccess}
             onCancel={closeRemoveDialog}
             />
@@ -320,7 +426,7 @@ export default function ComputeCells(props){
             lang={lang}
             open={migrateDialogVisible}
             sourcePool={poolName}
-            sourceCell={currentCell}
+            sourceCell={selected}
             onSuccess={onMigrateSuccess}
             onCancel={closeMigrateDialog}
             />

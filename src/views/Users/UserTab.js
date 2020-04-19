@@ -17,7 +17,7 @@ import GridContainer from "components/Grid/GridContainer.js";
 import Info from "components/Typography/Info.js";
 import Snackbar from "components/Snackbar/Snackbar.js";
 import Button from "components/CustomButtons/Button.js";
-import TooltipButton from "components/CustomButtons/TooltipButton.js";
+import IconButton from "components/CustomButtons/IconButton.js";
 import OperableTable from "components/Table/OperableTable.js";
 import CreateUserDialog from "views/Users/CreateUserDialog";
 import ModifyUserDialog from "views/Users/ModifyUserDialog";
@@ -164,9 +164,9 @@ export default function UserTab(props){
           rows={
             userList.map((username, key) => {
               const name = username;
-              var operators = [<TooltipButton key='modify' title={texts.modify} icon={EditIcon} onClick={() => showModifyDialog(name)}/>]
+              var operators = [<IconButton key='modify' label={texts.modify} icon={EditIcon} onClick={() => showModifyDialog(name)}/>]
               if (name !== session.user){
-                operators.push(<TooltipButton key='delete' title={texts.delete} icon={DeleteIcon} onClick={() => showDeleteDialog(name)}/>)
+                operators.push(<IconButton key='delete' label={texts.delete} icon={DeleteIcon} onClick={() => showDeleteDialog(name)}/>)
               }
               return (
                 <TableRow className={classes.tableBodyRow} key={key}>

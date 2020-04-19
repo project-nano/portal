@@ -1,23 +1,6 @@
 import React from "react";
-// @material-ui/core components
-import Grid from "@material-ui/core/Grid";
-import Box from '@material-ui/core/Box';
-import Dialog from '@material-ui/core/Dialog';
-import DialogActions from '@material-ui/core/DialogActions';
-import DialogContent from '@material-ui/core/DialogContent';
-import DialogTitle from '@material-ui/core/DialogTitle';
-import TextField from '@material-ui/core/TextField';
-import Radio from '@material-ui/core/Radio';
-import RadioGroup from '@material-ui/core/RadioGroup';
-import FormControlLabel from '@material-ui/core/FormControlLabel';
-import FormControl from '@material-ui/core/FormControl';
-import FormLabel from '@material-ui/core/FormLabel';
-
-// dashboard components
-import Button from "components/CustomButtons/Button.js";
-import GridItem from "components/Grid/GridItem.js";
-import SingleRow from "components/Grid/SingleRow.js";
-import SnackbarContent from "components/Snackbar/SnackbarContent.js";
+import InputList from "components/CustomInput/InputList";
+import CustomDialog from "components/Dialog/CustomDialog.js";
 import { addAddressRange } from 'nano_api.js';
 
 const i18n = {
@@ -46,24 +29,26 @@ const i18n = {
 }
 
 export default function AddDialog(props){
-  const TypeInternal = 'internal';
-  const TypeExternal = 'external';
   const defaultValues = {
-    type: TypeInternal,
+    type: "internal",
     start: '',
     end: '',
     netmask: '',
   };
   const { lang, poolName, open, onSuccess, onCancel } = props;
-  const [ error, setError ] = React.useState('');
+  const [ operatable, setOperatable ] = React.useState(true);
+  const [ prompt, setPrompt ] = React.useState('');
   const [ request, setRequest ] = React.useState(defaultValues);
-
   const texts = i18n[lang];
-  const onAddFail = (msg) =>{
-    setError(msg);
+  const title = texts.title;
+
+  const onAddFail = msg =>{
+    setOperatable(true);
+    setPrompt(msg);
   }
+
   const resetDialog = () =>{
-    setError('');
+    setPrompt('');
     setRequest(defaultValues);
   };
 
@@ -73,11 +58,13 @@ export default function AddDialog(props){
   }
 
   const onAddSuccess = () =>{
+    setOperatable(true);
     resetDialog();
-    onSuccess(poolName, request.type, request.start);
+    onSuccess(request.type, request.start);
   }
 
-  const confirmAdd = () =>{
+  const handleAdd = () =>{
+    setOperatable(false);
     const ipv4Pattern = new RegExp('^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?).){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$');
 
     if(!request.start){
@@ -116,107 +103,69 @@ export default function AddDialog(props){
   };
 
   //begin render
-  const content = (
-      <Grid container>
-        <SingleRow>
-          <GridItem xs={12}>
-            <Box m={0} pt={2}>
-              <FormControl component="fieldset" fullWidth>
-                <FormLabel component="legend">{texts.type}</FormLabel>
-                <RadioGroup name="type" value={request.type} onChange={handleRequestPropsChanged('type')} row>
-                  <Box display='flex' alignItems='center'>
-                    <Box>
-                      <FormControlLabel value={TypeInternal} control={<Radio />} label={texts.internal}/>
-                    </Box>
-                    <Box>
-                      <FormControlLabel value={TypeExternal} control={<Radio disabled/>} label={texts.external}/>
-                    </Box>
-                  </Box>
-                </RadioGroup>
-              </FormControl>
-            </Box>
-          </GridItem>
-        </SingleRow>
-        <SingleRow>
-          <GridItem xs={12} sm={8} md={6}>
-            <Box m={0} pt={2}>
-              <TextField
-                label={texts.start}
-                onChange={handleRequestPropsChanged('start')}
-                value={request.start}
-                margin="normal"
-                required
-                fullWidth
-              />
-            </Box>
-          </GridItem>
-        </SingleRow>
-        <SingleRow>
-          <GridItem xs={12} sm={8} md={6}>
-            <Box m={0} pt={2}>
-              <TextField
-                label={texts.end}
-                onChange={handleRequestPropsChanged('end')}
-                value={request.end}
-                margin="normal"
-                required
-                fullWidth
-              />
-            </Box>
-          </GridItem>
-        </SingleRow>
-        <SingleRow>
-          <GridItem xs={12} sm={8} md={6}>
-            <Box m={0} pt={2}>
-              <TextField
-                label={texts.netmask}
-                onChange={handleRequestPropsChanged('netmask')}
-                value={request.netmask}
-                margin="normal"
-                required
-                fullWidth
-              />
-            </Box>
-          </GridItem>
-        </SingleRow>
-      </Grid>
-    );
+  const inputs = [
+    {
+      type: "radio",
+      label: texts.type,
+      onChange: handleRequestPropsChanged('type'),
+      value: request.type,
+      options: [{
+        label: texts.internal,
+        value: "internal",
+      }],
+      required: true,
+      oneRow: true,
+      xs: 12,
+    },
+    {
+      type: "text",
+      label: texts.start,
+      onChange: handleRequestPropsChanged('start'),
+      value: request.start,
+      required: true,
+      oneRow: true,
+      xs: 12,
+      sm: 8,
+      md: 6,
+    },
+    {
+      type: "text",
+      label: texts.end,
+      onChange: handleRequestPropsChanged('end'),
+      value: request.end,
+      required: true,
+      oneRow: true,
+      xs: 12,
+      sm: 8,
+      md: 6,
+    },
+    {
+      type: "text",
+      label: texts.netmask,
+      onChange: handleRequestPropsChanged('netmask'),
+      value: request.netmask,
+      oneRow: true,
+      xs: 12,
+      sm: 8,
+      md: 6,
+    },
+  ];
 
-  let prompt;
-  if (!error || '' === error){
-    prompt = <GridItem xs={12}/>;
-  }else{
-    prompt = (
-      <GridItem xs={12}>
-        <SnackbarContent message={error} color="danger"/>
-      </GridItem>
-    );
-  }
+  const content = <InputList inputs={inputs}/>
 
-  return (
-    <Dialog
-      open={open}
-      aria-labelledby={texts.title}
-      maxWidth="sm"
-      fullWidth
-    >
-      <DialogTitle>{texts.title}</DialogTitle>
-      <DialogContent>
-        <Grid container>
-          <GridItem xs={12}>
-            {content}
-          </GridItem>
-          {prompt}
-        </Grid>
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={closeDialog} color="transparent" autoFocus>
-          {texts.cancel}
-        </Button>
-        <Button onClick={confirmAdd} color="info">
-          {texts.confirm}
-        </Button>
-      </DialogActions>
-    </Dialog>
-  )
+  const buttons = [
+    {
+      color: 'transparent',
+      label: texts.cancel,
+      onClick: closeDialog,
+    },
+    {
+      color: 'info',
+      label: texts.confirm,
+      onClick: handleAdd,
+    },
+  ];
+
+  return <CustomDialog size='sm' open={open} prompt={prompt}
+    title={title}  buttons={buttons} content={content} operatable={operatable}/>;
 };

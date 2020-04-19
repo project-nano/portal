@@ -5,6 +5,9 @@ import Skeleton from '@material-ui/lab/Skeleton';
 import AddIcon from '@material-ui/icons/Add';
 import Divider from '@material-ui/core/Divider';
 import Box from '@material-ui/core/Box';
+import DeleteIcon from '@material-ui/icons/Delete';
+import BuildIcon from '@material-ui/icons/Build';
+import ListIcon from '@material-ui/icons/List';
 
 // dashboard components
 import GridItem from "components/Grid/GridItem.js";
@@ -15,27 +18,14 @@ import CardBody from "components/Card/CardBody.js";
 import Info from "components/Typography/Info.js";
 import Snackbar from "components/Snackbar/Snackbar.js";
 import Button from "components/CustomButtons/Button.js";
-import OperableTable from "components/Table/OperableTable.js";
-import PoolRow from "views/AddressPools/PoolRow.js";
+import Table from "components/Table/ObjectTable.js";
+import IconButton from "components/CustomButtons/IconButton.js";
 import DeleteDialog from "views/AddressPools/DeleteDialog.js";
 import CreateDialog from "views/AddressPools/CreateDialog.js";
 import ModifyDialog from "views/AddressPools/ModifyDialog.js";
-import { getLoggedSession, logoutSession, redirectToLogin } from 'utils.js';
 import { getAllNetworkPools, writeLog } from "nano_api.js";
 
 const styles = {
-  cardCategoryWhite: {
-    "&,& a,& a:hover,& a:focus": {
-      color: "rgba(255,255,255,.62)",
-      margin: "0",
-      fontSize: "14px",
-      marginTop: "0",
-      marginBottom: "0"
-    },
-    "& a,& a:hover,& a:focus": {
-      color: "#FFFFFF"
-    }
-  },
   cardTitleWhite: {
     color: "#FFFFFF",
     marginTop: "0px",
@@ -65,6 +55,9 @@ const i18n = {
     allocated: "Allocated Address",
     operates: "Operates",
     noResource: "No address pool available",
+    modify: 'Modify',
+    delete: 'Delete',
+    detail: 'Detail',
   },
   'cn':{
     createButton: "创建地址池",
@@ -75,17 +68,29 @@ const i18n = {
     allocated: "已分配地址",
     operates: "操作",
     noResource: "没有地址池",
+    modify: '修改',
+    delete: '删除',
+    detail: '详情',
   }
+}
+
+function dataToNodes(data, buttons){
+  const operates = buttons.map((button, key) => (
+    <IconButton label={button.label} icon={button.icon} onClick={button.onClick} href={button.href} key={key}/>
+  ))
+  const { name, gateway, addresses, allocated } = data;
+  return [ name, gateway, addresses.toString(), allocated.toString(), operates];
 }
 
 export default function PoolList(props){
     const classes = useStyles();
-    const [ poolList, setPoolList ] = React.useState(null);
+    const [ mounted, setMounted ] = React.useState(false);
+    const [ dataList, setDataList ] = React.useState(null);
     //for dialog
     const [ createDialogVisible, setCreateDialogVisible ] = React.useState(false);
     const [ modifyDialogVisible, setModifyDialogVisible ] = React.useState(false);
     const [ deleteDialogVisible, setDeleteDialogVisible ] = React.useState(false);
-    const [ current, setCurrent ] = React.useState('');
+    const [ selected, setSelected ] = React.useState('');
 
     const [ notifyColor, setNotifyColor ] = React.useState('warning');
     const [ notifyMessage, setNotifyMessage ] = React.useState("");
@@ -95,21 +100,32 @@ export default function PoolList(props){
     }
 
     const showErrorMessage = React.useCallback((msg) => {
+      if (!mounted){
+        return;
+      }
       const notifyDuration = 3000;
       setNotifyColor('warning');
       setNotifyMessage(msg);
       setTimeout(closeNotify, notifyDuration);
-    }, [setNotifyColor, setNotifyMessage]);
+    }, [setNotifyColor, setNotifyMessage, mounted]);
 
-    const reloadAllAddressPools = React.useCallback(() => {
-      const onLoadFail = (err) =>{
-        showErrorMessage(err);
-        logoutSession();
+    const reloadAllData = React.useCallback(() => {
+      if (!mounted){
+        return;
       }
-      getAllNetworkPools(setPoolList, onLoadFail);
-    }, [showErrorMessage]);
+      const onLoadFail = (err) =>{
+        if (!mounted){
+          return;
+        }
+        showErrorMessage(err);
+      }
+      getAllNetworkPools(setDataList, onLoadFail);
+    }, [showErrorMessage, mounted]);
 
     const showNotifyMessage = (msg) => {
+      if (!mounted){
+        return;
+      }
       const notifyDuration = 3000;
       setNotifyColor('info');
       setNotifyMessage(msg);
@@ -118,9 +134,9 @@ export default function PoolList(props){
     };
 
     //modify
-    const showModifyDialog = (poolName) =>{
+    const showModifyDialog = poolName =>{
       setModifyDialogVisible(true);
-      setCurrent(poolName);
+      setSelected(poolName);
     }
 
     const closeModifyDialog = () =>{
@@ -130,13 +146,13 @@ export default function PoolList(props){
     const onModifySuccess = (poolName) =>{
       closeModifyDialog();
       showNotifyMessage('pool ' + poolName + ' modified');
-      reloadAllAddressPools();
+      reloadAllData();
     };
 
     //delete
     const showDeleteDialog = (poolName) =>{
       setDeleteDialogVisible(true);
-      setCurrent(poolName);
+      setSelected(poolName);
     }
 
     const closeDeleteDialog = () =>{
@@ -146,7 +162,7 @@ export default function PoolList(props){
     const onDeleteSuccess = (poolName) =>{
       closeDeleteDialog();
       showNotifyMessage('pool ' + poolName + ' deleted');
-      reloadAllAddressPools();
+      reloadAllData();
     };
 
     //create
@@ -161,42 +177,52 @@ export default function PoolList(props){
     const onCreateSuccess = (poolName) =>{
       closeCreateDialog();
       showNotifyMessage('pool ' + poolName + ' created');
-      reloadAllAddressPools();
+      reloadAllData();
     };
 
     React.useEffect(() =>{
-      reloadAllAddressPools();
-    }, [reloadAllAddressPools]);
+      setMounted(true);
+      reloadAllData();
+      return () =>{
+        setMounted(false);
+      }
+    }, [reloadAllData]);
 
-
-    //reder begin
-    var session = getLoggedSession();
-    if (null === session){
-      return redirectToLogin();
-    }
+    //begin rendering
     const { lang } = props;
     const texts = i18n[lang];
     let content;
-    if (null === poolList){
+    if (null === dataList){
       content = <Skeleton variant="rect" style={{height: '10rem'}}/>;
-    }else if (0 === poolList.length){
-      content = <Info>{texts.noResource}</Info>;
+    }else if (0 === dataList.length){
+      content = <Box display="flex" justifyContent="center"><Info>{texts.noResource}</Info></Box>;
     }else{
+      var rows = [];
+      dataList.forEach( data => {
+        const buttons = [
+          {
+            onClick: e => showModifyDialog(data.name),
+            icon: BuildIcon,
+            label: texts.modify,
+          },
+          {
+            icon: ListIcon,
+            label: texts.detail,
+            href: '/admin/address_pools/' + data.name,
+          },
+          {
+            onClick: e => showDeleteDialog(data.name),
+            icon: DeleteIcon,
+            label: texts.delete,
+          },
+        ];
+        rows.push(dataToNodes(data, buttons));
+      });
       content = (
-        <OperableTable
+        <Table
           color="primary"
           headers={[texts.name, texts.gateway, texts.address, texts.allocated, texts.operates]}
-          rows={
-            poolList.map(pool =>(
-              <PoolRow
-                key={pool.name}
-                pool={pool}
-                lang={lang}
-                onModify={showModifyDialog}
-                onDelete={showDeleteDialog}
-                />
-            ))}
-          />
+          rows={rows}/>
       );
     }
 
@@ -246,7 +272,7 @@ export default function PoolList(props){
           <ModifyDialog
             lang={lang}
             open={modifyDialogVisible}
-            pool={current}
+            pool={selected}
             onSuccess={onModifySuccess}
             onCancel={closeModifyDialog}
             />
@@ -255,7 +281,7 @@ export default function PoolList(props){
           <DeleteDialog
             lang={lang}
             open={deleteDialogVisible}
-            pool={current}
+            pool={selected}
             onSuccess={onDeleteSuccess}
             onCancel={closeDeleteDialog}
             />

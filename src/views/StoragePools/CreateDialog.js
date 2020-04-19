@@ -1,21 +1,6 @@
 import React from "react";
-// @material-ui/core components
-import Grid from "@material-ui/core/Grid";
-import Box from '@material-ui/core/Box';
-import Dialog from '@material-ui/core/Dialog';
-import DialogActions from '@material-ui/core/DialogActions';
-import DialogContent from '@material-ui/core/DialogContent';
-import DialogTitle from '@material-ui/core/DialogTitle';
-import MenuItem from '@material-ui/core/MenuItem';
-import Select from '@material-ui/core/Select';
-import InputLabel from '@material-ui/core/InputLabel';
-import TextField from '@material-ui/core/TextField';
-
-// dashboard components
-import Button from "components/CustomButtons/Button.js";
-import GridItem from "components/Grid/GridItem.js";
-import SingleRow from "components/Grid/SingleRow.js";
-import SnackbarContent from "components/Snackbar/SnackbarContent.js";
+import InputList from "components/CustomInput/InputList";
+import CustomDialog from "components/Dialog/CustomDialog.js";
 import { createStoragePool } from 'nano_api.js';
 
 const i18n = {
@@ -48,7 +33,8 @@ export default function CreateDialog(props){
     target: '',
   };
   const { lang, open, onSuccess, onCancel } = props;
-  const [ error, setError ] = React.useState('');
+  const [ operatable, setOperatable ] = React.useState(true);
+  const [ prompt, setPrompt ] = React.useState('');
   const [ request, setRequest ] = React.useState(defaultValues);
   const options = {
     type: [{
@@ -59,10 +45,12 @@ export default function CreateDialog(props){
 
   const texts = i18n[lang];
   const onCreateFail = (msg) =>{
-    setError(msg);
+    setOperatable(true);
+    setPrompt(msg);
   }
+
   const resetDialog = () =>{
-    setError('');
+    setPrompt('');
     setRequest(defaultValues);
   };
 
@@ -73,10 +61,12 @@ export default function CreateDialog(props){
 
   const onCreateSuccess = (poolName) =>{
     resetDialog();
+    setOperatable(true);
     onSuccess(poolName);
   }
 
-  const confirmCreate = () =>{
+  const handleCreate = () =>{
+    setOperatable(false);
     if(!request.name){
       onCreateFail('must specify storage name');
       return;
@@ -116,111 +106,69 @@ export default function CreateDialog(props){
     }));
   };
 
-  //begin render
-  const content = (
-      <Grid container>
-        <SingleRow>
-          <GridItem xs={12} sm={6} md={4}>
-            <Box m={0} pt={2}>
-              <TextField
-                label={texts.name}
-                onChange={handleRequestPropsChanged('name')}
-                value={request.name}
-                margin="normal"
-                required
-                fullWidth
-              />
-            </Box>
-          </GridItem>
-        </SingleRow>
-        <SingleRow>
-          <GridItem xs={12} sm={8} md={6}>
-            <Box m={0} pt={2}>
-              <InputLabel htmlFor="type">{texts.type}</InputLabel>
-              <Select
-                value={request.type}
-                onChange={handleRequestPropsChanged('type')}
-                inputProps={{
-                  name: 'type',
-                  id: 'type',
-                }}
-                fullWidth
-              >
-                {
-                  options.type.map((option) =>(
-                    <MenuItem value={option.value} key={option.value}>{option.label}</MenuItem>
-                  ))
-                }
-              </Select>
-            </Box>
-          </GridItem>
-        </SingleRow>
-        <SingleRow>
-          <GridItem xs={12} sm={10} md={8}>
-            <Box m={0} pt={2}>
-              <TextField
-                label={texts.host}
-                onChange={handleRequestPropsChanged('host')}
-                value={request.host}
-                margin="normal"
-                required
-                fullWidth
-              />
-            </Box>
-          </GridItem>
-        </SingleRow>
-        <SingleRow>
-        <GridItem xs={12} sm={10} md={8}>
-          <Box m={0} pt={2}>
-            <TextField
-              label={texts.target}
-              onChange={handleRequestPropsChanged('target')}
-              value={request.target}
-              margin="normal"
-              required
-              fullWidth
-            />
-          </Box>
-        </GridItem>
-        </SingleRow>
-      </Grid>
-    );
+  const inputs = [
+    {
+      type: "text",
+      label: texts.name,
+      onChange: handleRequestPropsChanged('name'),
+      value: request.name,
+      required: true,
+      oneRow: true,
+      xs: 12,
+      sm: 6,
+      md: 4,
+    },
+    {
+      type: "select",
+      label: texts.type,
+      onChange: handleRequestPropsChanged('type'),
+      value: request.type,
+      options: options.type,
+      required: true,
+      oneRow: true,
+      xs: 12,
+      sm: 8,
+      md: 6,
+    },
+    {
+      type: "text",
+      label: texts.host,
+      onChange: handleRequestPropsChanged('host'),
+      value: request.host,
+      required: true,
+      oneRow: true,
+      xs: 12,
+      sm: 10,
+      md: 8,
+    },
+    {
+      type: "text",
+      label: texts.target,
+      onChange: handleRequestPropsChanged('target'),
+      value: request.target,
+      required: true,
+      oneRow: true,
+      xs: 12,
+      sm: 10,
+      md: 8,
+    },
+  ];
 
-  let prompt;
-  if (!error || '' === error){
-    prompt = <GridItem xs={12}/>;
-  }else{
-    prompt = (
-      <GridItem xs={12}>
-        <SnackbarContent message={error} color="danger"/>
-      </GridItem>
-    );
-  }
+  const content = <InputList inputs={inputs}/>
 
-  return (
-    <Dialog
-      open={open}
-      aria-labelledby={texts.title}
-      maxWidth="sm"
-      fullWidth
-    >
-      <DialogTitle>{texts.title}</DialogTitle>
-      <DialogContent>
-        <Grid container>
-          <GridItem xs={12}>
-            {content}
-          </GridItem>
-          {prompt}
-        </Grid>
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={closeDialog} color="transparent" autoFocus>
-          {texts.cancel}
-        </Button>
-        <Button onClick={confirmCreate} color="info">
-          {texts.confirm}
-        </Button>
-      </DialogActions>
-    </Dialog>
-  )
+  const buttons = [
+    {
+      color: 'transparent',
+      label: texts.cancel,
+      onClick: closeDialog,
+    },
+    {
+      color: 'info',
+      label: texts.confirm,
+      onClick: handleCreate,
+    },
+  ];
+
+  return <CustomDialog size='sm' open={open} prompt={prompt}
+    title={texts.title}  buttons={buttons} content={content} operatable={operatable}/>;
 };

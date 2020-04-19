@@ -17,7 +17,7 @@ import GridContainer from "components/Grid/GridContainer.js";
 import Info from "components/Typography/Info.js";
 import Snackbar from "components/Snackbar/Snackbar.js";
 import Button from "components/CustomButtons/Button.js";
-import TooltipButton from "components/CustomButtons/TooltipButton.js";
+import IconButton from "components/CustomButtons/IconButton.js";
 import OperableTable from "components/Table/OperableTable.js";
 import AddMemberDialog from "views/Users/AddMemberDialog";
 import RemoveMemberDialog from "views/Users/RemoveMemberDialog";
@@ -146,7 +146,7 @@ export default function GroupMemberTab(props){
           rows={
             memberList.map((member, key) => {
               var operators = [
-                <TooltipButton key='remove' title={texts.remove} icon={DeleteIcon} onClick={() => showRemoveDialog(member)}/>,
+                <IconButton key='remove' label={texts.remove} icon={DeleteIcon} onClick={() => showRemoveDialog(member)}/>,
               ];
 
               return (

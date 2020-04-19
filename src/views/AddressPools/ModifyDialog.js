@@ -1,19 +1,7 @@
 import React from "react";
-// @material-ui/core components
-import Grid from "@material-ui/core/Grid";
-import Box from '@material-ui/core/Box';
-import Dialog from '@material-ui/core/Dialog';
-import DialogActions from '@material-ui/core/DialogActions';
-import DialogContent from '@material-ui/core/DialogContent';
-import DialogTitle from '@material-ui/core/DialogTitle';
 import Skeleton from '@material-ui/lab/Skeleton';
-import TextField from '@material-ui/core/TextField';
-
-// dashboard components
-import Button from "components/CustomButtons/Button.js";
-import GridItem from "components/Grid/GridItem.js";
-import SingleRow from "components/Grid/SingleRow.js";
-import SnackbarContent from "components/Snackbar/SnackbarContent.js";
+import InputList from "components/CustomInput/InputList";
+import CustomDialog from "components/Dialog/CustomDialog.js";
 import { modifyNetworkPool, getNetworkPool } from 'nano_api.js';
 
 const i18n = {
@@ -46,15 +34,19 @@ export default function ModifyDialog(props){
   };
   const { lang, pool, open, onSuccess, onCancel } = props;
   const [ initialed, setInitialed ] = React.useState(false);
-  const [ error, setError ] = React.useState('');
+  const [ operatable, setOperatable ] = React.useState(true);
+  const [ prompt, setPrompt ] = React.useState('');
+  const [ mounted, setMounted ] = React.useState(false);
   const [ request, setRequest ] = React.useState(defaultValues);
-
   const texts = i18n[lang];
+  const title = texts.title + ' ' + pool;
+
   const onModifyFail = (msg) =>{
-    setError(msg);
+    setOperatable(true);
+    setPrompt(msg);
   }
   const resetDialog = () =>{
-    setError('');
+    setPrompt('');
     setRequest(defaultValues);
     setInitialed(false);
   };
@@ -64,12 +56,14 @@ export default function ModifyDialog(props){
     onCancel();
   }
 
-  const onModifySuccess = (poolName) =>{
+  const onModifySuccess = poolName =>{
+    setOperatable(true);
     resetDialog();
     onSuccess(poolName);
   }
 
-  const confirmModify = () =>{
+  const handleModify = () =>{
+    setOperatable(false);
     const ipv4Pattern = new RegExp('^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?).){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$');
 
     if(!request.gateway){
@@ -109,17 +103,22 @@ export default function ModifyDialog(props){
 
 
   React.useEffect(()=>{
-    if (!pool || !open || initialed ){
+    if (!pool || !open ){
       return;
     }
 
+    setMounted(true);
     const onGetPoolSuccess = pool =>{
+      if(!mounted){
+        return;
+      }
       let primary, secondary;
       if (0 === pool.dns.length){
         onModifyFail('no DNS available for pool ' + pool);
         return
       }else if (1 === pool.dns.length){
         primary = pool.dns[0];
+        secondary = "";
       }else if (2 === pool.dns.length){
         primary = pool.dns[0];
         secondary = pool.dns[1];
@@ -134,109 +133,78 @@ export default function ModifyDialog(props){
     };
 
     getNetworkPool(pool, onGetPoolSuccess, onModifyFail);
-
-  }, [initialed, open, pool]);
+    return () => {
+      setMounted(false);
+    }
+  }, [mounted, open, pool]);
 
   //begin render
-  let content;
+
+  let content, buttons;
   if (!initialed){
     content = <Skeleton variant="rect" style={{height: '10rem'}}/>;
+    buttons = [];
   }else{
-    content = (
-      <Grid container>
-      <SingleRow>
-        <GridItem xs={12} sm={6} md={4}>
-          <Box m={0} pt={2}>
-            <TextField
-              label={texts.name}
-              value={pool}
-              margin="normal"
-              disabled
-              fullWidth
-            />
-          </Box>
-        </GridItem>
-      </SingleRow>
-      <SingleRow>
-        <GridItem xs={12} sm={10} md={8}>
-          <Box m={0} pt={2}>
-            <TextField
-              label={texts.gateway}
-              onChange={handleRequestPropsChanged('gateway')}
-              value={request.gateway}
-              margin="normal"
-              required
-              fullWidth
-            />
-          </Box>
-        </GridItem>
-      </SingleRow>
-      <SingleRow>
-        <GridItem xs={12} sm={10} md={8}>
-          <Box m={0} pt={2}>
-            <TextField
-              label={texts.dns1}
-              onChange={handleRequestPropsChanged('dns1')}
-              value={request.dns1}
-              margin="normal"
-              required
-              fullWidth
-            />
-          </Box>
-        </GridItem>
-      </SingleRow>
-      <SingleRow>
-      <GridItem xs={12} sm={10} md={8}>
-        <Box m={0} pt={2}>
-          <TextField
-            label={texts.dns2}
-            onChange={handleRequestPropsChanged('dns2')}
-            value={request.dns2}
-            margin="normal"
-            fullWidth
-          />
-        </Box>
-      </GridItem>
-      </SingleRow>
-      </Grid>
-    );
+    const inputs = [
+      {
+        type: "text",
+        label: texts.name,
+        value: pool,
+        disabled: true,
+        oneRow: true,
+        xs: 12,
+        sm: 6,
+        md: 4,
+      },
+      {
+        type: "text",
+        label: texts.gateway,
+        onChange: handleRequestPropsChanged('gateway'),
+        value: request.gateway,
+        required: true,
+        oneRow: true,
+        xs: 12,
+        sm: 10,
+        md: 8,
+      },
+      {
+        type: "text",
+        label: texts.dns1,
+        onChange: handleRequestPropsChanged('dns1'),
+        value: request.dns1,
+        required: true,
+        oneRow: true,
+        xs: 12,
+        sm: 10,
+        md: 8,
+      },
+      {
+        type: "text",
+        label: texts.dns2,
+        onChange: handleRequestPropsChanged('dns2'),
+        value: request.dns2,
+        oneRow: true,
+        xs: 12,
+        sm: 10,
+        md: 8,
+      },
+    ];
+
+    content = <InputList inputs={inputs}/>
+    buttons = [
+      {
+        color: 'transparent',
+        label: texts.cancel,
+        onClick: closeDialog,
+      },
+      {
+        color: 'info',
+        label: texts.confirm,
+        onClick: handleModify,
+      },
+    ];
   }
 
-  let prompt;
-  if (!error || '' === error){
-    prompt = <GridItem xs={12}/>;
-  }else{
-    prompt = (
-      <GridItem xs={12}>
-        <SnackbarContent message={error} color="danger"/>
-      </GridItem>
-    );
-  }
-
-  return (
-    <Dialog
-      open={open}
-      aria-labelledby={texts.title}
-      maxWidth="sm"
-      fullWidth
-    >
-      <DialogTitle>{texts.title + ' ' + pool}</DialogTitle>
-      <DialogContent>
-        <Grid container>
-          <GridItem xs={12}>
-            {content}
-          </GridItem>
-          {prompt}
-        </Grid>
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={closeDialog} color="transparent" autoFocus>
-          {texts.cancel}
-        </Button>
-        <Button onClick={confirmModify} color="info">
-          {texts.confirm}
-        </Button>
-      </DialogActions>
-    </Dialog>
-  )
+  return <CustomDialog size='sm' open={open} prompt={prompt}
+      title={title}  buttons={buttons} content={content} operatable={operatable}/>;
 };

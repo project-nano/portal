@@ -1,12 +1,10 @@
 import React from "react";
 // @material-ui/core components
 import { makeStyles } from "@material-ui/core/styles";
-import { Link } from "react-router-dom";
-import TableRow from "@material-ui/core/TableRow";
-import TableCell from "@material-ui/core/TableCell";
-import IconButton from "@material-ui/core/IconButton";
 import Skeleton from '@material-ui/lab/Skeleton';
 import AddIcon from '@material-ui/icons/Add';
+import DeleteIcon from '@material-ui/icons/Delete';
+import ListIcon from '@material-ui/icons/List';
 import NavigateBeforeIcon from '@material-ui/icons/NavigateBefore';
 import Divider from '@material-ui/core/Divider';
 import Box from '@material-ui/core/Box';
@@ -21,11 +19,10 @@ import CardBody from "components/Card/CardBody.js";
 import Info from "components/Typography/Info.js";
 import Snackbar from "components/Snackbar/Snackbar.js";
 import Button from "components/CustomButtons/Button.js";
-import OperableTable from "components/Table/OperableTable.js";
-import RangeRow from "views/AddressPools/RangeRow";
+import Table from "components/Table/ObjectTable.js";
+import IconButton from "components/CustomButtons/IconButton.js";
 import RemoveRangeDialog from "views/AddressPools/RemoveRangeDialog.js";
 import AddRangeDialog from "views/AddressPools/AddRangeDialog.js";
-import { getLoggedSession, logoutSession, redirectToLogin } from 'utils.js';
 import { getNetworkPool, writeLog } from "nano_api.js";
 
 const styles = {
@@ -75,6 +72,8 @@ const i18n = {
     operates: "Operates",
     allocatedAddress: 'Allocated Address',
     instance: 'Instance',
+    detail: 'Detail',
+    remove: 'Remove',
   },
   'cn':{
     back: '返回',
@@ -90,18 +89,47 @@ const i18n = {
     operates: "操作",
     allocatedAddress: '已分配地址',
     instance: '云主机实例',
+    detail: '详情',
+    remove: '删除',
   }
 }
 
+function dataToNodes(data, buttons){
+  // const operates = buttons.map((button, key) => (
+  //   <IconButton label={button.label} icon={button.icon} onClick={button.onClick} href={button.href} key={key}/>
+  // ))
+  const operates = buttons.map((button, key) => (
+    React.createElement(IconButton, {
+      ...button,
+      key: key,
+    })
+  ))
+  const { start, end, netmask } = data;
+  return [ start, end, netmask, operates];
+}
+
+function dataToAllocated(data, buttons){
+  const { address, instance } = data;
+  const operates = buttons.map((button, key) => (
+    React.createElement(IconButton, {
+      ...button,
+      key: key,
+    })
+  ))
+  return [address, instance].concat(operates);
+}
+
 export default function PoolStatus(props){
+    const { lang } = props;
+    const texts = i18n[lang];
     const poolName = props.match.params.pool;
     const classes = useStyles();
+    const [ mounted, setMounted ] = React.useState(false);
     const [ status, setStatus ] = React.useState(null);
     //for dialog
     const [ addDialogVisible, setAddDialogVisible ] = React.useState(false);
     const [ removeDialogVisible, setRemoveDialogVisible ] = React.useState(false);
     const [ current, setCurrent ] = React.useState({
-      pool: '',
       type: '',
       start: '',
     });
@@ -113,22 +141,33 @@ export default function PoolStatus(props){
       setNotifyMessage("");
     }
 
-    const showErrorMessage = React.useCallback((msg) => {
+    const showErrorMessage = React.useCallback(msg => {
+      if (!mounted){
+        return;
+      }
       const notifyDuration = 3000;
       setNotifyColor('warning');
       setNotifyMessage(msg);
       setTimeout(closeNotify, notifyDuration);
-    }, [setNotifyColor, setNotifyMessage]);
+    }, [setNotifyColor, setNotifyMessage, mounted]);
 
     const reloadPoolStatus = React.useCallback(() => {
+      if (!mounted){
+        return;
+      }
       const onLoadFail = (err) =>{
+        if (!mounted){
+          return;
+        }
         showErrorMessage(err);
-        logoutSession();
       }
       getNetworkPool(poolName, setStatus, onLoadFail);
-    }, [showErrorMessage, poolName]);
+    }, [showErrorMessage, poolName, mounted]);
 
-    const showNotifyMessage = (msg) => {
+    const showNotifyMessage = msg => {
+      if (!mounted){
+        return;
+      }
       const notifyDuration = 3000;
       setNotifyColor('info');
       setNotifyMessage(msg);
@@ -137,10 +176,9 @@ export default function PoolStatus(props){
     };
 
     //remove
-    const showRemoveDialog = (poolName, rangeType, startAddress) =>{
+    const showRemoveDialog = (rangeType, startAddress) =>{
       setRemoveDialogVisible(true);
       setCurrent({
-        pool: poolName,
         type: rangeType,
         start: startAddress,
       });
@@ -150,7 +188,7 @@ export default function PoolStatus(props){
       setRemoveDialogVisible(false);
     }
 
-    const onRemoveSuccess = (poolName, rangeType, startAddress) =>{
+    const onRemoveSuccess = (rangeType, startAddress) =>{
       closeRemoveDialog();
       showNotifyMessage('range "' + startAddress + '" of ' + rangeType + ' address removed');
       reloadPoolStatus();
@@ -165,47 +203,51 @@ export default function PoolStatus(props){
       setAddDialogVisible(false);
     }
 
-    const onAddSuccess = (poolName, rangeType, startAddress) =>{
+    const onAddSuccess = (rangeType, startAddress) =>{
       closeAddDialog();
       showNotifyMessage('range "' + startAddress + '" of ' + rangeType + ' address added');
       reloadPoolStatus();
     };
 
     React.useEffect(() =>{
+      setMounted(true);
       reloadPoolStatus();
+      return () =>{
+        setMounted(false);
+      }
     }, [reloadPoolStatus]);
 
 
-    //reder begin
-    var session = getLoggedSession();
-    if (null === session){
-      return redirectToLogin();
-    }
-    const { lang } = props;
-    const texts = i18n[lang];
+    //begin rendering
     let content;
     if (null === status){
       content = <Skeleton variant="rect" style={{height: '10rem'}}/>;
     }else{
       let internalContent;
       if (!status.ranges || 0 === status.ranges.length){
-        internalContent = <Info>{texts.noInternalRange}</Info>;
+        internalContent = <Box display="flex" justifyContent="center"><Info>{texts.noInternalRange}</Info></Box>;
       }else{
+        var rows = [];
+        status.ranges.forEach( data => {
+          const buttons = [
+            {
+              icon: ListIcon,
+              label: texts.detail,
+              href: '/admin/address_pools/' + poolName + "/internal/ranges/" + data.start,
+            },
+            {
+              onClick: e => showRemoveDialog("internal", data.start),
+              icon: DeleteIcon,
+              label: texts.remove,
+            },
+          ];
+          rows.push(dataToNodes(data, buttons));
+        });
         internalContent = (
-          <OperableTable
+          <Table
             color="primary"
             headers={[texts.startAddress, texts.endAddress, texts.netmask, texts.operates]}
-            rows={
-              status.ranges.map((range, key) =>(
-                <RangeRow
-                  key={key}
-                  poolName={poolName}
-                  lang={lang}
-                  rangeType='internal'
-                  range={range}
-                  onRemove={showRemoveDialog}
-                  />
-              ))}
+            rows={rows}
             />
         )
       }
@@ -222,30 +264,24 @@ export default function PoolStatus(props){
 
       let allocatedContent;
       if (!status.allocated || 0 === status.allocated.length){
-        allocatedContent = <Info>{texts.noAllocated}</Info>;
+        allocatedContent = <Box display="flex" justifyContent="center"><Info>{texts.noAllocated}</Info></Box>;
       }else{
+        rows = [];
+        status.allocated.forEach( data => {
+          const buttons = [
+            {
+              icon: VisibilityIcon,
+              label: texts.detail,
+              href: '/admin/instances/details/' + data.instance,
+            },
+          ];
+          rows.push(dataToAllocated(data, buttons));
+        });
         allocatedContent = (
-          <OperableTable
+          <Table
             color="primary"
             headers={[texts.allocatedAddress, texts.instance, '']}
-            rows={
-              status.allocated.map((allocated, key) =>(
-                <TableRow className={classes.tableBodyRow} key={key}>
-                  <TableCell className={classes.tableCell}>
-                    {allocated.address}
-                  </TableCell>
-                  <TableCell className={classes.tableCell}>
-                    {allocated.instance}
-                  </TableCell>
-                  <TableCell className={classes.tableCell}>
-                    <Link to={'/admin/instances/details/' + allocated.instance}>
-                      <IconButton color="inherit">
-                        <VisibilityIcon/>
-                      </IconButton>
-                    </Link>
-                  </TableCell>
-                </TableRow>
-              ))}
+            rows={rows}
             />
         )
       }
@@ -325,7 +361,7 @@ export default function PoolStatus(props){
           <RemoveRangeDialog
             lang={lang}
             open={removeDialogVisible}
-            poolName={current.pool}
+            poolName={poolName}
             rangeType={current.type}
             startAddress={current.start}
             onSuccess={onRemoveSuccess}

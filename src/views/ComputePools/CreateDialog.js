@@ -1,22 +1,7 @@
 import React from "react";
-// @material-ui/core components
-import Grid from "@material-ui/core/Grid";
-import Box from '@material-ui/core/Box';
-import Dialog from '@material-ui/core/Dialog';
-import DialogActions from '@material-ui/core/DialogActions';
-import DialogContent from '@material-ui/core/DialogContent';
-import DialogTitle from '@material-ui/core/DialogTitle';
 import Skeleton from '@material-ui/lab/Skeleton';
-import TextField from '@material-ui/core/TextField';
-import MenuItem from '@material-ui/core/MenuItem';
-import Select from '@material-ui/core/Select';
-import InputLabel from '@material-ui/core/InputLabel';
-import Switch from '@material-ui/core/Switch';
-
-// dashboard components
-import Button from "components/CustomButtons/Button.js";
-import GridItem from "components/Grid/GridItem.js";
-import SnackbarContent from "components/Snackbar/SnackbarContent.js";
+import InputList from "components/CustomInput/InputList";
+import CustomDialog from "components/Dialog/CustomDialog.js";
 import { getAllStoragePools, getAllNetworkPools, createComputePool } from 'nano_api.js';
 
 const i18n = {
@@ -57,8 +42,9 @@ const CreateDialog = (props) =>{
     failover: false,
   };
   const { lang, open, onSuccess, onCancel } = props;
+  const [ operatable, setOperatable ] = React.useState(true);
+  const [ prompt, setPrompt ] = React.useState('');
   const [ initialed, setInitialed ] = React.useState(false);
-  const [ error, setError ] = React.useState('');
   const [ request, setRequest ] = React.useState(defaultValues);
   const [ options, setOptions ] = React.useState({
     storage: [],
@@ -66,23 +52,31 @@ const CreateDialog = (props) =>{
   });
 
   const texts = i18n[lang];
-  const onCreateFail = (msg) =>{
-    setError(msg);
+  const title = texts.title;
+
+  const onCreateFail = msg =>{
+    setOperatable(true);
+    setPrompt(msg);
   }
 
-  const closeDialog = ()=>{
-    setError('');
+  const resetDialog = () =>{
+    setPrompt('');
     setRequest(defaultValues);
+  };
+
+  const closeDialog = ()=>{
+    resetDialog();
     onCancel();
   }
 
-  const onCreateSuccess = (poolName) =>{
-    setError('');
-    setRequest(defaultValues);
+  const onCreateSuccess = poolName =>{
+    setOperatable(true);
+    resetDialog();
     onSuccess(poolName);
   }
 
-  const confirmCreate = () =>{
+  const handleConfirm = () =>{
+    setOperatable(false);
     const poolName = request.name;
     if ('' === poolName){
       onCreateFail('must specify pool name');
@@ -123,18 +117,18 @@ const CreateDialog = (props) =>{
       return;
     }
     var storageList = [{
-      name: texts.localStorage,
+      label: texts.localStorage,
       value: defaultOption,
     }];
     var addressList = [{
-      name: texts.noAddressPool,
+      label: texts.noAddressPool,
       value: defaultOption,
     }];
 
     const onQueryNetworkSuccess = (dataList) =>{
       dataList.forEach((address)=>{
         var item = {
-          name: address.name + ' (' + address.allocated + '/' + address.addresses + ' allocated via gateway ' + address.gateway + ')',
+          label: address.name + ' (' + address.allocated + '/' + address.addresses + ' allocated via gateway ' + address.gateway + ')',
           value: address.name,
         }
         addressList.push(item);
@@ -148,7 +142,7 @@ const CreateDialog = (props) =>{
     const onQueryStorageSuccess = (dataList) =>{
         dataList.forEach((storage)=>{
           var item = {
-            name: storage.name + ' (' + storage.type + ':' + storage.host + ')',
+            label: storage.name + ' (' + storage.type + ':' + storage.host + ')',
             value: storage.name,
           }
           storageList.push(item);
@@ -161,124 +155,70 @@ const CreateDialog = (props) =>{
   }, [initialed, open, texts.localStorage, texts.noAddressPool]);
 
   //begin render
-  let content;
+  let content, buttons;
   if (!initialed){
     content = <Skeleton variant="rect" style={{height: '10rem'}}/>;
+    buttons = [];
   }else{
-    content = (
-      <Grid container>
-        <GridItem xs={6}>
-          <Box m={1} p={2}>
-            <TextField
-              label={texts.name}
-              onChange={handleRequestPropsChanged('name')}
-              value={request.name}
-              margin="normal"
-              required
-              fullWidth
-            />
-          </Box>
-        </GridItem>
-        <GridItem xs={8}>
-          <Box m={1} p={2}>
-          <InputLabel htmlFor="storage">{texts.storage}</InputLabel>
-          <Select
-            value={request.storage}
-            onChange={handleRequestPropsChanged('storage')}
-            inputProps={{
-              name: 'storage',
-              id: 'storage',
-            }}
-            fullWidth
-          >
-            {
-              options.storage.map((option) =>(
-                <MenuItem value={option.value} key={option.value}>{option.name}</MenuItem>
-              ))
-            }
-          </Select>
-          </Box>
-        </GridItem>
-        <GridItem xs={10}>
-          <Box m={1} p={2}>
-          <InputLabel htmlFor="network">{texts.network}</InputLabel>
-          <Select
-            value={request.network}
-            onChange={handleRequestPropsChanged('network')}
-            inputProps={{
-              name: 'network',
-              id: 'network',
-            }}
-            fullWidth
-          >
-            {
-              options.network.map((option) =>(
-                <MenuItem value={option.value} key={option.value}>{option.name}</MenuItem>
-              ))
-            }
-          </Select>
-          </Box>
-        </GridItem>
+    const inputs = [
+      {
+        type: "text",
+        label: texts.name,
+        onChange: handleRequestPropsChanged('name'),
+        value: request.name,
+        required: true,
+        oneRow: true,
+        xs: 6,
+      },
+      {
+        type: "select",
+        label: texts.storage,
+        onChange: handleRequestPropsChanged('storage'),
+        value: request.storage,
+        options: options.storage,
+        required: true,
+        oneRow: true,
+        xs: 8,
+      },
+      {
+        type: "select",
+        label: texts.network,
+        onChange: handleRequestPropsChanged('network'),
+        value: request.network,
+        options: options.network,
+        required: true,
+        oneRow: true,
+        xs: 10,
+      },
+      {
+        type: "switch",
+        label: texts.failover,
+        onChange: handleRequestSwitchChanged('failover'),
+        value: request.failover,
+        on: texts.on,
+        off: texts.off,
+        oneRow: true,
+        xs: 6,
+      },
+    ];
+    content = <InputList inputs={inputs}/>
 
-        <GridItem xs={6}>
-          <Box m={1} p={2}>
-          <InputLabel htmlFor="failover">{texts.failover}</InputLabel>
-          <GridItem>
-            {texts.off}
-            <Switch
-              checked={request.failover}
-              onChange={handleRequestSwitchChanged('failover')}
-              color="primary"
-              inputProps={{
-                name: 'failover',
-                id: 'failover',
-              }}
-            />
-            {texts.on}
-          </GridItem>
-          </Box>
-        </GridItem>
-      </Grid>
-    );
+    buttons = [
+      {
+        color: 'transparent',
+        label: texts.cancel,
+        onClick: closeDialog,
+      },
+      {
+        color: 'info',
+        label: texts.confirm,
+        onClick: handleConfirm,
+      },
+    ];
   }
 
-  let prompt;
-  if (!error || '' === error){
-    prompt = <GridItem xs={12}/>;
-  }else{
-    prompt = (
-      <GridItem xs={12}>
-        <SnackbarContent message={error} color="danger"/>
-      </GridItem>
-    );
-  }
-
-  return (
-    <Dialog
-      open={open}
-      aria-labelledby={texts.title}
-      maxWidth="sm"
-      fullWidth
-    >
-      <DialogTitle>{texts.title}</DialogTitle>
-      <DialogContent>
-        <Grid container>
-          <GridItem xs={12}>
-            {content}
-          </GridItem>
-          {prompt}
-        </Grid>
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={closeDialog} color="transparent" autoFocus>
-          {texts.cancel}
-        </Button>
-        <Button onClick={confirmCreate} color="info">
-          {texts.confirm}
-        </Button>
-      </DialogActions>
-    </Dialog>
-  )
+  return <CustomDialog size='sm' open={open} prompt={prompt}
+    title={title}  buttons={buttons} content={content} operatable={operatable}/>;
 };
 
 export default CreateDialog;
