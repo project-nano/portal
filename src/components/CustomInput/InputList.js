@@ -34,6 +34,22 @@ function InputComponent(props){
         </Box>
       )
       break;
+    case "password":
+      component = (
+        <Box m={0} pt={2}>
+          <TextField
+            label={label}
+            onChange={onChange}
+            value={value}
+            type="password"
+            margin="normal"
+            required={required}
+            disabled={disabled}
+            fullWidth
+          />
+        </Box>
+      )
+      break;
     case "file":
       component = (
         <Box m={0} pt={2}>
@@ -181,7 +197,7 @@ function InputComponent(props){
 }
 
 InputComponent.propTypes = {
-  type: PropTypes.oneOf(["text", "textarea", "file", "select", "radio", "switch", "checkbox"]).isRequired,
+  type: PropTypes.oneOf(["text", "password","textarea", "file", "select", "radio", "switch", "checkbox"]).isRequired,
   label: PropTypes.string.isRequired,
   value: PropTypes.any,
   onChange: PropTypes.func,
