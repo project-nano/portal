@@ -1,21 +1,7 @@
 import React from "react";
-// @material-ui/core components
-import Grid from "@material-ui/core/Grid";
-import Box from '@material-ui/core/Box';
-import Dialog from '@material-ui/core/Dialog';
-import DialogActions from '@material-ui/core/DialogActions';
-import DialogContent from '@material-ui/core/DialogContent';
-import DialogTitle from '@material-ui/core/DialogTitle';
 import Skeleton from '@material-ui/lab/Skeleton';
-import MenuItem from '@material-ui/core/MenuItem';
-import Select from '@material-ui/core/Select';
-import InputLabel from '@material-ui/core/InputLabel';
-
-// dashboard components
-import Button from "components/CustomButtons/Button.js";
-import GridItem from "components/Grid/GridItem.js";
-import SingleRow from "components/Grid/SingleRow.js";
-import SnackbarContent from "components/Snackbar/SnackbarContent.js";
+import InputList from "components/CustomInput/InputList";
+import CustomDialog from "components/Dialog/CustomDialog.js";
 import { searchMediaImages, startInstanceWithMedia } from 'nano_api.js';
 
 const i18n = {
@@ -40,19 +26,25 @@ export default function StartWithMediaDialog(props){
   };
   const { lang, instanceID, open, onSuccess, onCancel } = props;
   const [ initialed, setInitialed ] = React.useState(false);
-  const [ error, setError ] = React.useState('');
+  const [ operatable, setOperatable ] = React.useState(true);
+  const [ prompt, setPrompt ] = React.useState('');
+  const [ mounted, setMounted ] = React.useState(false);
   const [ request, setRequest ] = React.useState(defaultValues);
   const [ options, setOptions ] = React.useState({
     images: [],
   });
-
   const texts = i18n[lang];
-  const onStartFail = (msg) =>{
-    setError(msg);
-  }
+  const title = texts.title;
+  const onStartFail = React.useCallback(msg =>{
+    if(!mounted){
+      return;
+    }
+    setOperatable(true);
+    setPrompt(msg);
+  }, [mounted]);
 
   const resetDialog = () => {
-    setError('');
+    setPrompt('');
     setRequest(defaultValues);
     setInitialed(false);
   }
@@ -63,11 +55,17 @@ export default function StartWithMediaDialog(props){
   }
 
   const onStartSuccess = (instanceID) =>{
+    if(!mounted){
+      return;
+    }
+    setOperatable(true);
     resetDialog();
     onSuccess(instanceID);
   }
 
-  const confirmStart = () =>{
+  const handleConfirm = () =>{
+    setPrompt('');
+    setOperatable(false);
     const imageID = request.image;
     if ('' === imageID){
       onStartFail('select a media image');
@@ -77,6 +75,9 @@ export default function StartWithMediaDialog(props){
   }
 
   const handleRequestPropsChanged = name => e =>{
+    if(!mounted){
+      return;
+    }
     var value = e.target.value
     setRequest(previous => ({
       ...previous,
@@ -85,11 +86,14 @@ export default function StartWithMediaDialog(props){
   };
 
   React.useEffect(()=>{
-    if (!open || initialed){
+    if (!open){
       return;
     }
-
+    setMounted(true);
     const onQueryMediaSuccess = (dataList) => {
+      if(!mounted){
+        return;
+      }
       var imageList = [];
       dataList.forEach(image =>{
         imageList.push({
@@ -104,76 +108,44 @@ export default function StartWithMediaDialog(props){
     };
 
     searchMediaImages(onQueryMediaSuccess, onStartFail);
-  }, [initialed, open]);
+    return () => setMounted(false);
+  }, [mounted, open, onStartFail]);
 
   //begin render
+  var buttons = [{
+    color: 'transparent',
+    label: texts.cancel,
+    onClick: closeDialog,
+  }];
   let content;
   if (!initialed){
     content = <Skeleton variant="rect" style={{height: '10rem'}}/>;
   }else{
-    content = (
-      <Grid container>
-        <SingleRow>
-          <GridItem xs={12} sm={10}>
-            <Box m={0} pt={2}>
-              <InputLabel htmlFor="image">{texts.name}</InputLabel>
-              <Select
-                value={request.image}
-                onChange={handleRequestPropsChanged('image')}
-                inputProps={{
-                  name: 'image',
-                  id: 'image',
-                }}
-                fullWidth
-              >
-                {
-                  options.images.map((option) =>(
-                    <MenuItem value={option.value} key={option.value}>{option.label}</MenuItem>
-                  ))
-                }
-              </Select>
-            </Box>
-          </GridItem>
-        </SingleRow>
-      </Grid>
+    const inputs = [
+      {
+        type: "select",
+        label: texts.name,
+        onChange: handleRequestPropsChanged('image'),
+        value: request.image,
+        options: options.images,
+        required: true,
+        oneRow: true,
+        xs: 12,
+        sm: 10,
+      },
+    ];
+    content = <InputList inputs={inputs}/>
+
+    buttons.push(
+      {
+        color: 'info',
+        label: texts.confirm,
+        onClick: handleConfirm,
+      }
     );
   }
 
-  let prompt;
-  if (!error || '' === error){
-    prompt = <GridItem xs={12}/>;
-  }else{
-    prompt = (
-      <GridItem xs={12}>
-        <SnackbarContent message={error} color="danger"/>
-      </GridItem>
-    );
-  }
+  return <CustomDialog size='xs' open={open} prompt={prompt}
+    title={title}  buttons={buttons} content={content} operatable={operatable}/>;
 
-  return (
-    <Dialog
-      open={open}
-      aria-labelledby={texts.title}
-      maxWidth="xs"
-      fullWidth
-    >
-      <DialogTitle>{texts.title}</DialogTitle>
-      <DialogContent>
-        <Grid container>
-          <GridItem xs={12}>
-            {content}
-          </GridItem>
-          {prompt}
-        </Grid>
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={closeDialog} color="transparent" autoFocus>
-          {texts.cancel}
-        </Button>
-        <Button onClick={confirmStart} color="info">
-          {texts.confirm}
-        </Button>
-      </DialogActions>
-    </Dialog>
-  )
 };

@@ -137,7 +137,8 @@ export default class VncDisplay extends React.Component {
     const options = {
       credentials: {
         password: password,
-      }
+      },
+      focusOnClick: true,
     };
 
     this.rfb = new RFB(this.container, url, options);

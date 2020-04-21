@@ -1,22 +1,7 @@
 import React from "react";
-// @material-ui/core components
-import Grid from "@material-ui/core/Grid";
-import Box from '@material-ui/core/Box';
-import Dialog from '@material-ui/core/Dialog';
-import DialogActions from '@material-ui/core/DialogActions';
-import DialogContent from '@material-ui/core/DialogContent';
-import DialogTitle from '@material-ui/core/DialogTitle';
-import TextField from '@material-ui/core/TextField';
 import Skeleton from '@material-ui/lab/Skeleton';
-import MenuItem from '@material-ui/core/MenuItem';
-import Select from '@material-ui/core/Select';
-import InputLabel from '@material-ui/core/InputLabel';
-
-// dashboard components
-import Button from "components/CustomButtons/Button.js";
-import GridItem from "components/Grid/GridItem.js";
-import SingleRow from "components/Grid/SingleRow.js";
-import SnackbarContent from "components/Snackbar/SnackbarContent.js";
+import InputList from "components/CustomInput/InputList";
+import CustomDialog from "components/Dialog/CustomDialog.js";
 import { queryComputeCellsInPool, migrateSingleInstance } from 'nano_api.js';
 
 const i18n = {
@@ -46,19 +31,27 @@ export default function MigrateInstanceDialog(props){
   };
   const { lang, instanceID, open, sourcePool, sourceCell, onSuccess, onCancel } = props;
   const [ initialed, setInitialed ] = React.useState(false);
-  const [ error, setError ] = React.useState('');
+  const [ operatable, setOperatable ] = React.useState(true);
+  const [ prompt, setPrompt ] = React.useState('');
+  const [ mounted, setMounted ] = React.useState(false);
   const [ request, setRequest ] = React.useState(defaultValues);
   const [ options, setOptions ] = React.useState({
     cells: [],
   });
 
   const texts = i18n[lang];
-  const onMigrateFail = (msg) =>{
-    setError(msg);
-  }
+  const title = texts.title;
+
+  const onMigrateFail = React.useCallback(msg =>{
+    if(!mounted){
+      return;
+    }
+    setOperatable(true);
+    setPrompt(msg);
+  }, [mounted]);
 
   const resetDialog = () => {
-    setError('');
+    setPrompt('');
     setRequest(defaultValues);
     setInitialed(false);
   }
@@ -69,20 +62,29 @@ export default function MigrateInstanceDialog(props){
   }
 
   const onMigrateSuccess = (instanceID) =>{
+    if(!mounted){
+      return;
+    }
+    setOperatable(true);
     resetDialog();
     onSuccess(instanceID);
   }
 
-  const confirmMigrate = () =>{
+  const handleConfirm = () =>{
     const targetCell = request.targetCell;
     if ('' === targetCell){
       onMigrateFail('select a target cell');
       return;
     }
+    setPrompt("");
+    setOperatable(false);
     migrateSingleInstance(sourcePool, sourceCell, targetCell, instanceID, onMigrateSuccess, onMigrateFail);
   }
 
   const handleRequestPropsChanged = name => e =>{
+    if(!mounted){
+      return;
+    }
     var value = e.target.value
     setRequest(previous => ({
       ...previous,
@@ -91,18 +93,29 @@ export default function MigrateInstanceDialog(props){
   };
 
   React.useEffect(()=>{
-    if (!open || initialed){
+    if (!open){
       return;
     }
 
-    const onQueryCellSuccess = (dataList) => {
+    setMounted(true);
+    const onQueryCellSuccess = dataList => {
+      if(!mounted){
+        return;
+      }
       var cellList = [];
       dataList.forEach(cell =>{
         if (cell.name !== sourceCell){
+          let label;
+          if(cell.alive){
+            label = cell.name + '('+ cell.address +')';
+          }else{
+            label = cell.name + '('+ texts.offline +')';
+          }
+
           cellList.push({
-            name: cell.name,
-            address: cell.address,
-            alive: cell.alive,
+            label: label,
+            value: cell.name,
+            disabled: !cell.alive,
           })
         }
       });
@@ -117,108 +130,64 @@ export default function MigrateInstanceDialog(props){
     };
 
     queryComputeCellsInPool(sourcePool, onQueryCellSuccess, onMigrateFail);
-  }, [initialed, open, sourcePool, sourceCell]);
+    return () => {
+      setMounted(false);
+    }
+  }, [mounted, open, sourcePool, sourceCell, onMigrateFail, texts.offline]);
 
   //begin render
+  var buttons = [{
+    color: 'transparent',
+    label: texts.cancel,
+    onClick: closeDialog,
+  }];
   let content;
   if (!initialed){
     content = <Skeleton variant="rect" style={{height: '10rem'}}/>;
   }else{
-    content = (
-      <Grid container>
-        <SingleRow>
-          <GridItem xs={12} sm={8}>
-            <Box m={0} pt={2}>
-              <TextField
-                label={texts.sourcePool}
-                value={sourcePool}
-                margin="normal"
-                disabled
-                fullWidth
-              />
-            </Box>
-          </GridItem>
-        </SingleRow>
-        <SingleRow>
-          <GridItem xs={12} sm={8}>
-            <Box m={0} pt={2}>
-              <TextField
-                label={texts.sourceCell}
-                value={sourceCell}
-                margin="normal"
-                disabled
-                fullWidth
-              />
-            </Box>
-          </GridItem>
-        </SingleRow>
-        <SingleRow>
-          <GridItem xs={12} sm={10}>
-            <Box m={0} pt={2}>
-              <InputLabel htmlFor="targetCell">{texts.targetCell}</InputLabel>
-              <Select
-                value={request.targetCell}
-                onChange={handleRequestPropsChanged('targetCell')}
-                inputProps={{
-                  name: 'targetCell',
-                  id: 'targetCell',
-                }}
-                fullWidth
-              >
-                {
-                  options.cells.map(cell =>{
-                    if(cell.alive){
-                      const label = cell.name + '('+ cell.address +')';
-                      return <MenuItem value={cell.name} key={cell.name}>{label}</MenuItem>
-                    }else{
-                      const label = cell.name + '('+ texts.offline +')';
-                      return <MenuItem value={cell.name} key={cell.name} disabled>{label}</MenuItem>
-                    }
-                  })
-                }
-              </Select>
-            </Box>
-          </GridItem>
-        </SingleRow>
-      </Grid>
+    const inputs = [
+      {
+        type: "text",
+        label: texts.sourcePool,
+        value: sourcePool,
+        disabled: true,
+        oneRow: true,
+        xs: 12,
+        sm: 8,
+      },
+      {
+        type: "text",
+        label: texts.sourceCell,
+        value: sourceCell,
+        disabled: true,
+        oneRow: true,
+        xs: 12,
+        sm: 8,
+      },
+      {
+        type: "select",
+        label: texts.targetCell,
+        onChange: handleRequestPropsChanged('targetCell'),
+        value: request.targetCell,
+        options: options.cells,
+        required: true,
+        oneRow: true,
+        xs: 12,
+        sm: 10,
+      },
+    ];
+
+    content = <InputList inputs={inputs}/>
+
+    buttons.push(
+      {
+        color: 'info',
+        label: texts.confirm,
+        onClick: handleConfirm,
+      }
     );
   }
 
-  let prompt;
-  if (!error || '' === error){
-    prompt = <GridItem xs={12}/>;
-  }else{
-    prompt = (
-      <GridItem xs={12}>
-        <SnackbarContent message={error} color="danger"/>
-      </GridItem>
-    );
-  }
-
-  return (
-    <Dialog
-      open={open}
-      aria-labelledby={texts.title}
-      maxWidth="xs"
-      fullWidth
-    >
-      <DialogTitle>{texts.title}</DialogTitle>
-      <DialogContent>
-        <Grid container>
-          <GridItem xs={12}>
-            {content}
-          </GridItem>
-          {prompt}
-        </Grid>
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={closeDialog} color="transparent" autoFocus>
-          {texts.cancel}
-        </Button>
-        <Button onClick={confirmMigrate} color="info">
-          {texts.confirm}
-        </Button>
-      </DialogActions>
-    </Dialog>
-  )
+  return <CustomDialog size='xs' open={open} prompt={prompt}
+    title={title}  buttons={buttons} content={content} operatable={operatable}/>;
 };

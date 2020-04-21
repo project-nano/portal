@@ -678,7 +678,6 @@ export default function Details(props){
             lang={lang}
             open={modifyPasswordVisiable}
             instanceID={guestID}
-            current={guest}
             onSuccess={onModifyPasswordSuccess}
             onCancel={closeModifyPasswordDialog}
             />

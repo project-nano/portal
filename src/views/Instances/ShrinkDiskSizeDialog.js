@@ -1,15 +1,5 @@
 import React from "react";
-// @material-ui/core components
-import Grid from "@material-ui/core/Grid";
-import Dialog from '@material-ui/core/Dialog';
-import DialogActions from '@material-ui/core/DialogActions';
-import DialogContent from '@material-ui/core/DialogContent';
-import DialogTitle from '@material-ui/core/DialogTitle';
-
-// dashboard components
-import Button from "components/CustomButtons/Button.js";
-import GridItem from "components/Grid/GridItem.js";
-import SnackbarContent from "components/Snackbar/SnackbarContent.js";
+import CustomDialog from "components/Dialog/CustomDialog.js";
 import { shrinkInstanceDisk } from 'nano_api.js';
 
 const i18n = {
@@ -35,67 +25,66 @@ const i18n = {
 
 export default function ShrinkDiskSizeDialog(props){
   const { lang, instanceID, index, open, onSuccess, onCancel } = props;
-  const [ error, setError ] = React.useState('');
+  const [ operatable, setOperatable ] = React.useState(true);
+  const [ prompt, setPrompt ] = React.useState('');
+  const [ mounted, setMounted ] = React.useState(false);
   const texts = i18n[lang];
-  const onShrinkFail = (msg) =>{
-    setError(msg);
-  }
+  const title = texts.title;
+
+  const onShrinkFail = React.useCallback(msg =>{
+    if(!mounted){
+      return;
+    }
+    setOperatable(true);
+    setPrompt(msg);
+  }, [mounted]);
 
   const closeDialog = () =>{
-    setError('');
+    setPrompt('');
     onCancel();
   }
 
   const onShrinkSuccess = diskIndex =>{
-    setError('');
+    if(!mounted){
+      return;
+    }
+    setOperatable(true);
+    setPrompt('');
     onSuccess(diskIndex, instanceID);
   }
 
-  const confirmShrink = () =>{
+  const handleConfirm = () =>{
+    setPrompt('');
+    setOperatable(false);
     shrinkInstanceDisk(instanceID, index, onShrinkSuccess, onShrinkFail);
   }
 
-  //begin render
-  let prompt;
-  if (!error || '' === error){
-    prompt = <GridItem xs={12}/>;
-  }else{
-    prompt = (
-      <GridItem xs={12}>
-        <SnackbarContent message={error} color="danger"/>
-      </GridItem>
-    );
-  }
+  React.useEffect(()=>{
+    if (!open){
+      return;
+    }
+    setMounted(true);
+    return ()=> setMounted(false);
+  }, [open]);
+
   let content;
   if (0 === index){
     content = texts.content1 + texts.systemDisk + texts.content2;
   }else{
     content = texts.content1 + texts.dataDisk + index.toString() + texts.content2;
   }
-  return (
-    <Dialog
-      open={open}
-      aria-labelledby={texts.title}
-      maxWidth="sm"
-      fullWidth
-    >
-      <DialogTitle>{texts.title}</DialogTitle>
-      <DialogContent>
-        <Grid container>
-          <GridItem xs={12}>
-            {content}
-          </GridItem>
-          {prompt}
-        </Grid>
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={closeDialog} color="transparent" autoFocus>
-          {texts.cancel}
-        </Button>
-        <Button onClick={confirmShrink} color="info">
-          {texts.confirm}
-        </Button>
-      </DialogActions>
-    </Dialog>
-  )
+  const buttons = [
+    {
+      color: 'transparent',
+      label: texts.cancel,
+      onClick: closeDialog,
+    },
+    {
+      color: 'info',
+      label: texts.confirm,
+      onClick: handleConfirm,
+    },
+  ];
+  return <CustomDialog size='sm' open={open} prompt={prompt}
+    title={title}  buttons={buttons} content={content} operatable={operatable}/>;
 };

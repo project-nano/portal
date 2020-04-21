@@ -1,15 +1,5 @@
 import React from "react";
-// @material-ui/core components
-import Grid from "@material-ui/core/Grid";
-import Dialog from '@material-ui/core/Dialog';
-import DialogActions from '@material-ui/core/DialogActions';
-import DialogContent from '@material-ui/core/DialogContent';
-import DialogTitle from '@material-ui/core/DialogTitle';
-
-// dashboard components
-import Button from "components/CustomButtons/Button.js";
-import GridItem from "components/Grid/GridItem.js";
-import SnackbarContent from "components/Snackbar/SnackbarContent.js";
+import CustomDialog from "components/Dialog/CustomDialog.js";
 import { deleteInstance } from 'nano_api.js';
 
 const i18n = {
@@ -29,63 +19,45 @@ const i18n = {
 
 export default function DeleteDialog(props){
   const { lang, instanceID, open, onSuccess, onCancel } = props;
-  const [ error, setError ] = React.useState('');
+  const [ operatable, setOperatable ] = React.useState(true);
+  const [ prompt, setPrompt ] = React.useState('');
   const texts = i18n[lang];
+  const title = texts.title;
+  const content = texts.content + instanceID;
   const onDeleteFail = (msg) =>{
-    setError(msg);
+    setOperatable(true);
+    setPrompt(msg);
   }
 
   const closeDialog = ()=>{
-    setError('');
+    setPrompt('');
     onCancel();
   }
 
   const onDeleteSuccess = () =>{
-    setError('');
+    setOperatable(true);
+    setPrompt('');
     onSuccess(instanceID);
   }
 
-  const confirmDelete = () =>{
+  const handleConfirm = () =>{
+    setOperatable(false);
     deleteInstance(instanceID, onDeleteSuccess, onDeleteFail);
   }
 
+  const buttons = [
+    {
+      color: 'transparent',
+      label: texts.cancel,
+      onClick: closeDialog,
+    },
+    {
+      color: 'info',
+      label:  texts.confirm,
+      onClick: handleConfirm,
+    },
+  ];
 
-  //begin render
-  let prompt;
-  if (!error || '' === error){
-    prompt = <GridItem xs={12}/>;
-  }else{
-    prompt = (
-      <GridItem xs={12}>
-        <SnackbarContent message={error} color="danger"/>
-      </GridItem>
-    );
-  }
-
-  return (
-    <Dialog
-      open={open}
-      aria-labelledby={texts.title}
-      maxWidth="sm"
-      fullWidth
-    >
-      <DialogTitle>{texts.title}</DialogTitle>
-      <DialogContent>
-        <Grid container>
-          <GridItem xs={12}>
-            {texts.content + instanceID}
-          </GridItem>
-          {prompt}
-        </Grid>
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={closeDialog} color="transparent" autoFocus>
-          {texts.cancel}
-        </Button>
-        <Button onClick={confirmDelete} color="info">
-          {texts.confirm}
-        </Button>
-      </DialogActions>
-    </Dialog>
-  )
+  return <CustomDialog size='sm' open={open} prompt={prompt}
+    title={title}  buttons={buttons} content={content} operatable={operatable}/>;
 };

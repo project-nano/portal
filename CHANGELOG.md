@@ -9,6 +9,7 @@
 ### Fixed
 
 - Wrong disk space when value is integer
+- Set admin password fail
 
 ## [1.1.0] - 2020-01-01
 

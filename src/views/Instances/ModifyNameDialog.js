@@ -1,18 +1,6 @@
 import React from "react";
-// @material-ui/core components
-import Grid from "@material-ui/core/Grid";
-import Box from '@material-ui/core/Box';
-import Dialog from '@material-ui/core/Dialog';
-import DialogActions from '@material-ui/core/DialogActions';
-import DialogContent from '@material-ui/core/DialogContent';
-import DialogTitle from '@material-ui/core/DialogTitle';
-import TextField from '@material-ui/core/TextField';
-
-// dashboard components
-import Button from "components/CustomButtons/Button.js";
-import GridItem from "components/Grid/GridItem.js";
-import SingleRow from "components/Grid/SingleRow.js";
-import SnackbarContent from "components/Snackbar/SnackbarContent.js";
+import InputList from "components/CustomInput/InputList";
+import CustomDialog from "components/Dialog/CustomDialog.js";
 import { modifyInstanceName } from 'nano_api.js';
 
 const i18n = {
@@ -38,15 +26,23 @@ export default function ModifyNameDialog(props){
   };
   const { lang, open, instanceID, current, onSuccess, onCancel } = props;
   const currentName = current ? current.name.slice(current.group.length + 1) : '';
-  const [ error, setError ] = React.useState('');
+  const [ operatable, setOperatable ] = React.useState(true);
+  const [ prompt, setPrompt ] = React.useState('');
+  const [ mounted, setMounted ] = React.useState(false);
   const [ request, setRequest ] = React.useState(defaultValues);
 
   const texts = i18n[lang];
-  const onModifyFail = (msg) =>{
-    setError(msg);
-  }
+  const title = texts.title;
+  const onModifyFail = React.useCallback(msg =>{
+    if(!mounted){
+      return;
+    }
+    setOperatable(true);
+    setPrompt(msg);
+  }, [mounted]);
+
   const resetDialog = () =>{
-    setError('');
+    setPrompt('');
     setRequest(defaultValues);
   };
 
@@ -56,11 +52,17 @@ export default function ModifyNameDialog(props){
   }
 
   const onModifySuccess = instanceName =>{
+    if(!mounted){
+      return;
+    }
+    setOperatable(true);
     resetDialog();
     onSuccess(instanceName, instanceID);
   }
 
-  const confirmModify = () =>{
+  const handleConfirm = () =>{
+    setPrompt('');
+    setOperatable(false);
     if(!request.name){
       onModifyFail('must specify new instance name');
       return;
@@ -76,6 +78,9 @@ export default function ModifyNameDialog(props){
   }
 
   const handleRequestPropsChanged = name => e =>{
+    if(!mounted){
+      return;
+    }
     var value = e.target.value
     setRequest(previous => ({
       ...previous,
@@ -83,75 +88,52 @@ export default function ModifyNameDialog(props){
     }));
   };
 
-  //begin render
-  const content = (
-    <Grid container>
-      <SingleRow>
-        <GridItem xs={12} sm={6} md={4}>
-          <Box m={0} pt={2}>
-            <TextField
-              label={texts.current}
-              value={currentName}
-              margin="normal"
-              disabled
-              fullWidth
-            />
-          </Box>
-        </GridItem>
-      </SingleRow>
-      <SingleRow>
-        <GridItem xs={12} sm={10} md={8}>
-          <Box m={0} pt={2}>
-            <TextField
-              label={texts.new}
-              onChange={handleRequestPropsChanged('name')}
-              value={request.name}
-              margin="normal"
-              required
-              fullWidth
-            />
-          </Box>
-        </GridItem>
-      </SingleRow>
-    </Grid>
-  );
+  React.useEffect(()=>{
+    if (!open){
+      return;
+    }
+    setMounted(true);
+    return ()=> setMounted(false);
+  }, [open]);
 
+  const inputs = [
+    {
+      type: "text",
+      label: texts.current,
+      value: currentName,
+      disabled: true,
+      oneRow: true,
+      xs: 12,
+      sm: 6,
+      md: 4,
+    },
+    {
+      type: "text",
+      label: texts.new,
+      onChange: handleRequestPropsChanged('name'),
+      value: request.name,
+      required: true,
+      oneRow: true,
+      xs: 12,
+      sm: 10,
+      md: 8,
+    },
+  ];
 
-  let prompt;
-  if (!error || '' === error){
-    prompt = <GridItem xs={12}/>;
-  }else{
-    prompt = (
-      <GridItem xs={12}>
-        <SnackbarContent message={error} color="danger"/>
-      </GridItem>
-    );
-  }
+  const buttons = [
+    {
+      color: 'transparent',
+      label: texts.cancel,
+      onClick: closeDialog,
+    },
+    {
+      color: 'info',
+      label: texts.confirm,
+      onClick: handleConfirm,
+    },
+  ];
 
-  return (
-    <Dialog
-      open={open}
-      aria-labelledby={texts.title}
-      maxWidth="sm"
-      fullWidth
-    >
-      <DialogTitle>{texts.title}</DialogTitle>
-      <DialogContent>
-        <Grid container>
-          <GridItem xs={12}>
-            {content}
-          </GridItem>
-          {prompt}
-        </Grid>
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={closeDialog} color="transparent" autoFocus>
-          {texts.cancel}
-        </Button>
-        <Button onClick={confirmModify} color="info">
-          {texts.confirm}
-        </Button>
-      </DialogActions>
-    </Dialog>
-  )
+  const content = <InputList inputs={inputs}/>
+  return <CustomDialog size='sm' open={open} prompt={prompt}
+    title={title}  buttons={buttons} content={content} operatable={operatable}/>;
 };
