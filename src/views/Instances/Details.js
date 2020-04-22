@@ -385,14 +385,14 @@ export default function Details(props){
         monitorAddress = 'vnc://' + guest.internal.display_address
       }
       let inbound, outbound;
-      if (guest.qos&&guest.qos.send_speed&& 0 !== guest.qos.send_speed){
-        inbound = bpsToString(guest.qos.send_speed);
+      if (guest.qos&&guest.qos.send_speed&& 0 !== guest.qos.receive_speed){
+        inbound = bpsToString(guest.qos.receive_speed);
       }else{
         inbound = texts.noLimit;
       }
 
-      if (guest.qos&&guest.qos.receive_speed&& 0 !== guest.qos.receive_speed){
-        outbound = bpsToString(guest.qos.receive_speed);
+      if (guest.qos&&guest.qos.receive_speed&& 0 !== guest.qos.send_speed){
+        outbound = bpsToString(guest.qos.send_speed);
       }else{
         outbound = texts.noLimit;
       }

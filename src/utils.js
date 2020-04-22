@@ -117,9 +117,9 @@ export function bytesToString(bytes){
 }
 
 export function bpsToString(bytes){
-  const KiB = 1 << 10;
-  const MiB = 1 << 20;
-  const GiB = 1 << 30;
+  const KiB = 1 << 7;
+  const MiB = 1 << 17;
+  const GiB = 1 << 27;
   const toString = (size, radix, unit) =>{
     if (0 === size % radix){
       return (size / radix).toString() + ' ' + unit;
@@ -128,13 +128,13 @@ export function bpsToString(bytes){
     }
   }
   if (bytes >= GiB){
-    return toString(bytes, GiB, 'GB/s');
+    return toString(bytes, GiB, 'Gb/s');
   }else if (bytes >= MiB){
-    return toString(bytes, MiB, 'MB/s');
+    return toString(bytes, MiB, 'Mb/s');
   }else if (bytes >= KiB){
-    return toString(bytes, KiB, 'KB/s');
+    return toString(bytes, KiB, 'Kb/s');
   }else{
-    return bytes.toString() + ' Bytes/s';
+    return bytes.toString() + ' Bits/s';
   }
 }
 

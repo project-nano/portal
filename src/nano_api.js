@@ -2,8 +2,8 @@ import axios from "axios";
 import { getLoggedSession } from 'utils.js';
 
 // const apiRoot = 'http://201.18.21.153:5870/api/v1';
-const apiRoot = 'http://192.168.3.26:5870/api/v1';
-// const apiRoot = 'http://192.168.1.111:5870/api/v1';
+// const apiRoot = 'http://192.168.3.26:5870/api/v1';
+const apiRoot = 'http://192.168.1.111:5870/api/v1';
 // const apiRoot = '/api/v1';
 const HeaderNanoSession = "Nano-Session";
 const currentVersion = '1.2.0';

@@ -14,9 +14,12 @@ import Grid from "@material-ui/core/Grid";
 import Box from '@material-ui/core/Box';
 import FormGroup from '@material-ui/core/FormGroup';
 import Checkbox from '@material-ui/core/Checkbox';
+import Slider from '@material-ui/core/Slider';
 
 function InputComponent(props){
-  const { type, label, value, onChange, required, oneRow, disabled, options, ...rest } = props;
+  var { type, label, value, onChange, required, oneRow, disabled, options,
+    on, off, rows, step, maxStep, minStep, marks,
+    ...rest } = props;
   let component;
   switch (type) {
     case "text":
@@ -66,7 +69,7 @@ function InputComponent(props){
       )
       break;
     case "textarea":
-      var { rows } = props;
+      // var { rows } = props;
       if (rows < 2) {
         rows = 3
       }
@@ -127,7 +130,7 @@ function InputComponent(props){
       )
       break;
     case "switch":
-      const { on, off } = props;
+      // const { on, off } = props;
       component = (
         <Box m={0} pt={2}>
           <InputLabel>{label}</InputLabel>
@@ -176,6 +179,24 @@ function InputComponent(props){
         </Box>
       )
       break;
+    case "slider":
+    // const { step, maxStep, minStep, marks } = props;
+      component = (
+        <Box m={0} pt={2}>
+          <FormLabel component="legend">{label}</FormLabel>
+          <Slider
+            color="secondary"
+            value={value}
+            max={maxStep}
+            min={minStep}
+            step={step}
+            valueLabelDisplay="auto"
+            marks={marks}
+            onChange={onChange}
+          />
+        </Box>
+      );
+      break;
     default:
       return <div/>;
   }
@@ -197,7 +218,7 @@ function InputComponent(props){
 }
 
 InputComponent.propTypes = {
-  type: PropTypes.oneOf(["text", "password","textarea", "file", "select", "radio", "switch", "checkbox"]).isRequired,
+  type: PropTypes.oneOf(["text", "password","textarea", "file", "select", "radio", "switch", "checkbox", "slider"]).isRequired,
   label: PropTypes.string.isRequired,
   value: PropTypes.any,
   onChange: PropTypes.func,
@@ -211,6 +232,15 @@ InputComponent.propTypes = {
   on: PropTypes.string,
   off: PropTypes.string,
   rows: PropTypes.number,
+  step: PropTypes.number,
+  maxStep: PropTypes.number,
+  minStep: PropTypes.number,
+  marks: PropTypes.arrayOf(
+    PropTypes.shape({
+      label: PropTypes.string.isRequired,
+      value: PropTypes.any.isRequired,
+    })
+  ),
   options: PropTypes.arrayOf(
     PropTypes.shape({
       label: PropTypes.string.isRequired,

@@ -1,20 +1,8 @@
 import React from "react";
-// @material-ui/core components
-import Grid from "@material-ui/core/Grid";
-import Box from '@material-ui/core/Box';
-import Dialog from '@material-ui/core/Dialog';
-import DialogActions from '@material-ui/core/DialogActions';
-import DialogContent from '@material-ui/core/DialogContent';
-import DialogTitle from '@material-ui/core/DialogTitle';
-import Slider from '@material-ui/core/Slider';
-import FormLabel from '@material-ui/core/FormLabel';
-
-// dashboard components
-import Button from "components/CustomButtons/Button.js";
-import GridItem from "components/Grid/GridItem.js";
-import SingleRow from "components/Grid/SingleRow.js";
-import SnackbarContent from "components/Snackbar/SnackbarContent.js";
-import { modifyInstanceDiskIOPS } from 'nano_api.js';
+import Skeleton from '@material-ui/lab/Skeleton';
+import InputList from "components/CustomInput/InputList";
+import CustomDialog from "components/Dialog/CustomDialog.js";
+import { modifyInstanceDiskIOPS, getInstanceConfig } from 'nano_api.js';
 
 const i18n = {
   'en':{
@@ -37,20 +25,28 @@ export default function ModifyDiskIOPSDialog(props){
   const defaultValues = {
     iops: 0,
   };
-  const { lang, open, instanceID, current, onSuccess, onCancel } = props;
-  const currentValue = current&&current.qos&&current.qos.write_iops ? current.qos.write_iops : 0;
-  const [ error, setError ] = React.useState('');
-  const [ request, setRequest ] = React.useState({
-    iops: currentValue,
-  });
+  const { lang, open, instanceID, onSuccess, onCancel } = props;
+  const [ operatable, setOperatable ] = React.useState(true);
+  const [ initialed, setInitialed ] = React.useState(false);
+  const [ prompt, setPrompt ] = React.useState('');
+  const [ mounted, setMounted ] = React.useState(false);
+  const [ request, setRequest ] = React.useState(defaultValues);
 
   const texts = i18n[lang];
-  const onModifyFail = (msg) =>{
-    setError(msg);
-  }
+  const title = texts.title;
+
+  const onModifyFail = React.useCallback(msg =>{
+    if(!mounted){
+      return;
+    }
+    setOperatable(true);
+    setPrompt(msg);
+  }, [mounted]);
+
   const resetDialog = () =>{
-    setError('');
+    setPrompt('');
     setRequest(defaultValues);
+    setInitialed(false);
   };
 
   const closeDialog = ()=>{
@@ -59,80 +55,93 @@ export default function ModifyDiskIOPSDialog(props){
   }
 
   const onModifySuccess = iops =>{
+    if(!mounted){
+      return;
+    }
+    setOperatable(true);
     resetDialog();
     onSuccess(iops, instanceID);
   }
 
-  const confirmModify = () =>{
+  const handleConfirm = () =>{
+    setPrompt('');
+    setOperatable(false);
     modifyInstanceDiskIOPS(instanceID, request.iops, onModifySuccess, onModifyFail);
   }
 
   const handleSliderValueChanged = name => (e, value) =>{
+    if(!mounted){
+      return;
+    }
     setRequest(previous => ({
       ...previous,
       [name]: value,
     }));
   };
 
-  //begin render
-  const content = (
-    <Grid container>
-      <SingleRow>
-        <GridItem xs={12}>
-          <Box m={0} pt={2}>
-            <FormLabel component="legend">{texts.label}</FormLabel>
-            <Slider
-              color="secondary"
-              defaultValue={currentValue}
-              max={2000}
-              min={0}
-              step={10}
-              valueLabelDisplay="auto"
-              marks={[{value: 0, label: texts.noLimit}, {value: 2000, label: 2000}]}
-              onChange={handleSliderValueChanged('iops')}
-            />
-          </Box>
-        </GridItem>
-      </SingleRow>
-    </Grid>
-  );
+  React.useEffect(()=>{
+    if (!open || !instanceID){
+      return;
+    }
+    setMounted(true);
+    const onGetSuccess = data =>{
+      if(!mounted){
+        return;
+      }
+      var iops = 0;
+      if (data.qos ){
+        iops = data.qos.write_iops;
+      }
+      setRequest({
+        iops: iops,
+      })
+      setInitialed(true);
+    }
+    getInstanceConfig(instanceID, onGetSuccess, onModifyFail);
 
+    return ()=> setMounted(false);
+  }, [open, instanceID, mounted, onModifyFail]);
 
-  let prompt;
-  if (!error || '' === error){
-    prompt = <GridItem xs={12}/>;
+  var buttons = [{
+    color: 'transparent',
+    label: texts.cancel,
+    onClick: closeDialog,
+  }];
+  let content;
+  if (!initialed){
+    content = <Skeleton variant="rect" style={{height: '10rem'}}/>;
   }else{
-    prompt = (
-      <GridItem xs={12}>
-        <SnackbarContent message={error} color="danger"/>
-      </GridItem>
-    );
-  }
+    const marks = [
+      {value: 0, label: texts.noLimit},
+      {value: 2000, label: 2000}
+    ];
 
-  return (
-    <Dialog
-      open={open}
-      aria-labelledby={texts.title}
-      maxWidth="sm"
-      fullWidth
-    >
-      <DialogTitle>{texts.title}</DialogTitle>
-      <DialogContent>
-        <Grid container>
-          <GridItem xs={12}>
-            {content}
-          </GridItem>
-          {prompt}
-        </Grid>
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={closeDialog} color="transparent" autoFocus>
-          {texts.cancel}
-        </Button>
-        <Button onClick={confirmModify} color="info">
-          {texts.confirm}
-        </Button>
-      </DialogActions>
-    </Dialog>
-  )
+    const inputs = [
+      {
+        type: "slider",
+        label: texts.label,
+        onChange: handleSliderValueChanged('iops'),
+        value: request.iops,
+        marks: marks,
+        step: 10,
+        maxStep: 2000,
+        minStep: 0,
+        required: true,
+        xs: 12,
+      },
+    ];
+
+    content = <InputList inputs={inputs}/>
+    buttons.push(
+      {
+        color: 'info',
+        label: texts.confirm,
+        onClick: handleConfirm,
+      }
+    );
+
+  }  
+
+  return <CustomDialog size='sm' open={open} prompt={prompt}
+    title={title}  buttons={buttons} content={content} operatable={operatable}/>;
 };
