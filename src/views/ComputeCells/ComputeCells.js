@@ -16,6 +16,7 @@ import SettingsIcon from '@material-ui/icons/Settings';
 import LocalShippingRoundedIcon from '@material-ui/icons/LocalShippingRounded';
 import WifiRoundedIcon from '@material-ui/icons/WifiRounded';
 import WifiOffRoundedIcon from '@material-ui/icons/WifiOffRounded';
+import StorageIcon from '@material-ui/icons/Storage';
 import Tooltip from "@material-ui/core/Tooltip";
 
 // dashboard components
@@ -33,6 +34,7 @@ import RemoveDialog from "views/ComputeCells/RemoveDialog.js";
 import AddDialog from "views/ComputeCells/AddDialog.js";
 import DetailDialog from "views/ComputeCells/DetailDialog.js";
 import MigrateDialog from "views/ComputeCells/MigrateDialog";
+import StorageDialog from "views/ComputeCells/ChangeStorageDialog";
 import fontStyles from "assets/jss/material-dashboard-react/components/typographyStyle.js";
 import { queryComputeCellsInPool, modifyComputeCell, writeLog } from "nano_api.js";
 import { useLocation } from "react-router-dom";
@@ -79,6 +81,7 @@ const i18n = {
     migrate: 'Migrate',
     online: "Online",
     offline: "Offline",
+    changeStorage: "Change Storage Path",
   },
   'cn':{
     addButton: "添加资源节点",
@@ -100,6 +103,7 @@ const i18n = {
     migrate: '迁移',
     online: "在线",
     offline: "离线",
+    changeStorage: "修改存储路径",
   }
 }
 
@@ -118,6 +122,7 @@ export default function ComputeCells(props){
     const [ detailDialogVisible, setDetailDialogVisible ] = React.useState(false);
     const [ removeDialogVisible, setRemoveDialogVisible ] = React.useState(false);
     const [ migrateDialogVisible, setMigrateDialogVisible ] = React.useState(false);
+    const [ storageDialogVisible, setStorageDialogVisible ] = React.useState(false);
     const [ selected, setSelected ] = React.useState('');
 
     const [ notifyColor, setNotifyColor ] = React.useState('warning');
@@ -214,6 +219,22 @@ export default function ComputeCells(props){
       reloadAllData();
     };
 
+    //change storage
+    //migrate instance
+    const showStorageDialog = cellName =>{
+      setStorageDialogVisible(true);
+      setSelected(cellName);
+    }
+
+    const closeStorageDialog = () =>{
+      setStorageDialogVisible(false);
+    }
+
+    const onStoragePathChange = (location, cellName) =>{
+      closeStorageDialog();
+      showNotifyMessage('storage path of  '+ cellName + ' changed to ' + location);
+    };
+
     const enableCell = cellName =>{
       const onSuccess = () =>{
         if (!mounted){
@@ -267,6 +288,11 @@ export default function ComputeCells(props){
             onClick: e => showDetailDialog(cell.name),
             icon: SettingsIcon,
             label: texts.detail,
+          },
+          {
+            onClick: e => showStorageDialog(cell.name),
+            icon: StorageIcon,
+            label: texts.changeStorage,
           },
           {
             onClick: e => showRemoveDialog(cell.name),
@@ -366,14 +392,14 @@ export default function ComputeCells(props){
           <Divider/>
           </Box>
         </GridItem>
-        <GridItem xs={12} sm={12} md={12}>
+        <GridItem xs={12}>
           <GridContainer>
-            <GridItem xs={3} sm={3} md={3}>
+            <GridItem xs={3}>
               <Button size="sm" color="info" round onClick={showAddDialog}><AddIcon />{texts.addButton}</Button>
             </GridItem>
           </GridContainer>
         </GridItem>
-        <GridItem xs={12} sm={12} md={12}>
+        <GridItem xs={12}>
           <Card>
             <CardHeader color="primary">
               <h4 className={classes.cardTitleWhite}>{texts.tableTitle}</h4>
@@ -383,54 +409,52 @@ export default function ComputeCells(props){
             </CardBody>
           </Card>
         </GridItem>
-        <GridItem>
-          <Snackbar
-            place="tr"
-            color={notifyColor}
-            message={notifyMessage}
-            open={"" !== notifyMessage}
-            closeNotification={closeNotify}
-            close
+        <Snackbar
+          place="tr"
+          color={notifyColor}
+          message={notifyMessage}
+          open={"" !== notifyMessage}
+          closeNotification={closeNotify}
+          close
+        />
+        <AddDialog
+          lang={lang}
+          open={addDialogVisible}
+          pool={poolName}
+          onSuccess={onAddSuccess}
+          onCancel={closeAddDialog}
           />
-        </GridItem>
-        <GridItem>
-          <AddDialog
-            lang={lang}
-            open={addDialogVisible}
-            pool={poolName}
-            onSuccess={onAddSuccess}
-            onCancel={closeAddDialog}
-            />
-        </GridItem>
-        <GridItem>
-          <DetailDialog
-            lang={lang}
-            open={detailDialogVisible}
-            pool={poolName}
-            cell={selected}
-            onCancel={closeDetailDialog}
-            />
-        </GridItem>
-        <GridItem>
-          <RemoveDialog
-            lang={lang}
-            open={removeDialogVisible}
-            pool={poolName}
-            cell={selected}
-            onSuccess={onRemoveSuccess}
-            onCancel={closeRemoveDialog}
-            />
-        </GridItem>
-        <GridItem>
-          <MigrateDialog
-            lang={lang}
-            open={migrateDialogVisible}
-            sourcePool={poolName}
-            sourceCell={selected}
-            onSuccess={onMigrateSuccess}
-            onCancel={closeMigrateDialog}
-            />
-        </GridItem>
+        <DetailDialog
+          lang={lang}
+          open={detailDialogVisible}
+          pool={poolName}
+          cell={selected}
+          onCancel={closeDetailDialog}
+          />
+        <RemoveDialog
+          lang={lang}
+          open={removeDialogVisible}
+          pool={poolName}
+          cell={selected}
+          onSuccess={onRemoveSuccess}
+          onCancel={closeRemoveDialog}
+          />
+        <MigrateDialog
+          lang={lang}
+          open={migrateDialogVisible}
+          sourcePool={poolName}
+          sourceCell={selected}
+          onSuccess={onMigrateSuccess}
+          onCancel={closeMigrateDialog}
+          />
+        <StorageDialog
+          lang={lang}
+          open={storageDialogVisible}
+          pool={poolName}
+          cell={selected}
+          onSuccess={onStoragePathChange}
+          onCancel={closeStorageDialog}
+          />
       </GridContainer>
     );
 }

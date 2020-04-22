@@ -8,8 +8,6 @@ import TableRow from '@material-ui/core/TableRow';
 import TableContainer from '@material-ui/core/TableContainer';
 import Container from '@material-ui/core/Container';
 import Box from '@material-ui/core/Box';
-import IconButton from "@material-ui/core/IconButton";
-import Tooltip from "@material-ui/core/Tooltip";
 import Paper from '@material-ui/core/Paper';
 import Divider from '@material-ui/core/Divider';
 import NavigateBeforeIcon from '@material-ui/icons/NavigateBefore';
@@ -19,6 +17,7 @@ import VisibilityOffIcon from '@material-ui/icons/VisibilityOff';
 import BuildIcon from '@material-ui/icons/Build';
 import ZoomOutMapIcon from '@material-ui/icons/ZoomOutMap';
 import SystemUpdateAltIcon from '@material-ui/icons/SystemUpdateAlt';
+import AutorenewIcon from '@material-ui/icons/Autorenew';
 
 // dashboard components
 import Button from "components/CustomButtons/Button.js";
@@ -28,6 +27,7 @@ import Card from "components/Card/Card.js";
 import CardHeader from "components/Card/CardHeader.js";
 import CardBody from "components/Card/CardBody.js";
 import Snackbar from "components/Snackbar/Snackbar.js";
+import IconButton from "components/CustomButtons/IconButton";
 import ModifyNameDialog from 'views/Instances/ModifyNameDialog';
 import ModifyCoresDialog from 'views/Instances/ModifyCoresDialog';
 import ModifyMemoryDialog from 'views/Instances/ModifyMemoryDialog';
@@ -37,7 +37,8 @@ import ShrinkDiskSizeDialog from 'views/Instances/ShrinkDiskSizeDialog';
 import ModifyCPUPriorityDialog from 'views/Instances/ModifyCPUPriorityDialog';
 import ModifyDiskIOPSDialog from 'views/Instances/ModifyDiskIOPSDialog';
 import ModifyNetworkBandwidthDialog from 'views/Instances/ModifyNetworkBandwidthDialog';
-import { getLoggedSession, redirectToLogin, bytesToString, bpsToString } from 'utils.js';
+import ResetSecretDialog from "views/Instances/ResetSecretDialog";
+import { bytesToString, bpsToString } from 'utils.js';
 import { getInstanceConfig, getInstanceAdminPassword, writeLog } from "nano_api.js";
 
 const i18n = {
@@ -83,6 +84,7 @@ const i18n = {
     modify: 'Modify',
     extendDisk: 'Extend Disk Size',
     shrinkDisk: 'Shrink Disk Size',
+    resetSecret: "Reset Monitor Secret",
   },
   'cn':{
     title: '云主机详情 ',
@@ -126,28 +128,9 @@ const i18n = {
     modify: '修改',
     extendDisk: '扩展磁盘容量',
     shrinkDisk: '缩减磁盘空间',
+    resetSecret: "重置监控密码",
   }
 }
-
-const IconWithTooltip = props => {
-  const { tips, icon, onClick } = props;
-  var iconProps = {
-    color: "inherit",
-    size: 'small',
-    children: React.createElement(icon),
-  };
-  if (onClick){
-    iconProps.onClick = onClick;
-  }
-  return (
-    <Tooltip
-      title={tips}
-      placement="top"
-      >
-      {React.createElement(IconButton, iconProps)}
-    </Tooltip>
-  )
-};
 
 export default function Details(props){
     const guestID = props.match.params.id;
@@ -165,6 +148,7 @@ export default function Details(props){
     const [ modifyCPUPriorityVisiable, setModifyCPUPriorityVisible ] = React.useState(false);
     const [ modifyDiskIOPSVisiable, setModifyDiskIOPSVisible ] = React.useState(false);
     const [ modifyNetworkBandwidthVisiable, setModifyNetworkBandwidthVisible ] = React.useState(false);
+    const [ resetSecretVisiable, setResetSecretVisible ] = React.useState(false);
     const [ diskIndex, setDiskIndex ] = React.useState(0);
     const [ notifyColor, setNotifyColor ] = React.useState('warning');
     const [ notifyMessage, setNotifyMessage ] = React.useState("");
@@ -339,17 +323,24 @@ export default function Details(props){
       reloadGuestConfig();
     };
 
+    //reset monitor secret
+    const showResetSecretDialog = () =>{
+      setResetSecretVisible(true);
+    };
+
+    const closeResetSecretDialog = () =>{
+      setResetSecretVisible(false);
+    }
+
+    const onResetSecretSuccess = () =>{
+      closeResetSecretDialog();
+      showNotifyMessage("monitor secret reset");
+      reloadGuestConfig();
+    };
+
     React.useEffect(() =>{
       reloadGuestConfig();
-
     }, [reloadGuestConfig]);
-
-
-    //reder begin
-    var session = getLoggedSession();
-    if (null === session){
-      return redirectToLogin();
-    }
 
     const { lang } = props;
     const texts = i18n[lang];
@@ -359,24 +350,14 @@ export default function Details(props){
       content = <Skeleton variant="rect" style={{height: '10rem'}}/>;
       title = '';
     }else{
-      const disabledWhenRunningIcon = (
-        <Tooltip
-          title={texts.disabledWhenRunning}
-          placement="top"
-          key='disable'
-          >
-          <IconButton color="inherit" size='small'><LockIcon/></IconButton>
-        </Tooltip>
-      );
-      const disabledWhenStoppedIcon = (
-        <Tooltip
-          title={texts.disabledWhenStopped}
-          placement="top"
-          key='disable'
-          >
-          <IconButton color="inherit" size='small'><LockIcon/></IconButton>
-        </Tooltip>
-      );
+      const disabledWhenRunningIcon = {
+        label: texts.disabledWhenRunning,
+        icon: LockIcon,
+      };
+      const disabledWhenStoppedIcon = {
+        label: texts.disabledWhenStopped,
+        icon: LockIcon,
+      };
 
       let monitorAddress;
       if(guest.display_protocol){
@@ -398,31 +379,26 @@ export default function Details(props){
       }
 
       const bandwidthLabel = [inbound, outbound].join(' / ');
+      const hideAdminPassword = () => setAdminPassword(null);
+      const showAdminPassword = () => {
+        const onQuerySuccess = (user, password) =>{
+          if(password){
+            setAdminPassword(password);
+          }else{
+            setAdminPassword('no password configured for user "' + user + '"');
+          }
+        }
+        getInstanceAdminPassword(guestID, onQuerySuccess, onFail);
+      };
 
       var adminPasswordOperators = [];
       if (adminPassword){
-        adminPasswordOperators.push(<IconWithTooltip key='adminPassword' tips={texts.hide} icon={VisibilityOffIcon} onClick={() => setAdminPassword(null)}/>);
+        adminPasswordOperators.push({label:texts.hide, icon: VisibilityOffIcon, onClick: hideAdminPassword});
       }else{
-        adminPasswordOperators.push(
-          <IconWithTooltip
-            key='adminPassword'
-            tips={texts.display}
-            icon={VisibilityIcon}
-            onClick={() => {
-              const onQuerySuccess = (user, password) =>{
-                if(password){
-                  setAdminPassword(password);
-                }else{
-                  setAdminPassword('no password configured for user "' + user + '"');
-                }
-
-              }
-              getInstanceAdminPassword(guestID, onQuerySuccess, onFail);
-            }}
-            />);
+        adminPasswordOperators.push({label:texts.display, icon: VisibilityIcon, onClick: showAdminPassword});
       }
       if (guest.running){
-        adminPasswordOperators.push(<IconWithTooltip key='modifyAdminPassword' tips={texts.modify} icon={BuildIcon} onClick={showModifyPasswordDialog}/>);
+        adminPasswordOperators.push({label:texts.modify, icon:BuildIcon, onClick:showModifyPasswordDialog});
       }else{
         adminPasswordOperators.push(disabledWhenStoppedIcon);
       }
@@ -431,7 +407,8 @@ export default function Details(props){
         {
           title: texts.name,
           value: guest.name,
-          operators: guest.running ? [disabledWhenRunningIcon] : [<IconWithTooltip key='name' tips={texts.modify} icon={BuildIcon} onClick={showModifyNameDialog}/>],
+          operators: guest.running ? [disabledWhenRunningIcon] :
+            [{label:texts.modify, icon:BuildIcon, onClick:showModifyNameDialog}],
         },
         {
           title: texts.id,
@@ -440,12 +417,14 @@ export default function Details(props){
         {
           title: texts.cores,
           value: guest.cores,
-          operators: guest.running ? [disabledWhenRunningIcon] : [<IconWithTooltip key='cores' tips={texts.modify} icon={BuildIcon} onClick={showModifyCoresDialog}/>],
+          operators: guest.running ? [disabledWhenRunningIcon] :
+            [{label:texts.modify, icon:BuildIcon, onClick:showModifyCoresDialog}],
         },
         {
           title: texts.memory,
           value: bytesToString(guest.memory),
-          operators: guest.running ? [disabledWhenRunningIcon] : [<IconWithTooltip key='memory' tips={texts.modify} icon={BuildIcon} onClick={showModifyMemoryDialog}/>],
+          operators: guest.running ? [disabledWhenRunningIcon] :
+            [{label:texts.modify, icon:BuildIcon, onClick:showModifyMemoryDialog}],
         },
         {
           title: texts.status,
@@ -473,17 +452,19 @@ export default function Details(props){
           title: texts.monitorSecret,
           value: secretVisiable? guest.monitor_secret : new Array(guest.monitor_secret.length).fill('*'),
           operators: secretVisiable? [
-            <IconWithTooltip key='secret' tips={texts.hide} icon={VisibilityOffIcon} onClick={() => setSecretVisiable(false)}/>
+            {label:texts.hide, icon:VisibilityOffIcon, onClick:() => setSecretVisiable(false)},
+            {label:texts.resetSecret, icon:AutorenewIcon, onClick:showResetSecretDialog}
           ] : [
-            <IconWithTooltip key='secret' tips={texts.display} icon={VisibilityIcon} onClick={() => setSecretVisiable(true)}/>
+            {label:texts.display, icon:VisibilityIcon, onClick:() => setSecretVisiable(true)},
+            {label:texts.resetSecret, icon:AutorenewIcon, onClick:showResetSecretDialog}
           ],
         },
         {
           title: texts.systemDisk,
           value: bytesToString(guest.disks[0]),
           operators: guest.running ? [disabledWhenRunningIcon] : [
-            <IconWithTooltip key='extendSystemDisk' tips={texts.extendDisk} icon={ZoomOutMapIcon} onClick={() => showModifyDiskSizeDialog(0)}/>,
-            <IconWithTooltip key='shrinkSystemDisk' tips={texts.shrinkDisk} icon={SystemUpdateAltIcon} onClick={() => showShrinkDiskSizeDialog(0)}/>,
+            {label:texts.extendDisk, icon:ZoomOutMapIcon, onClick:() => showModifyDiskSizeDialog(0)},
+            {label:texts.shrinkDisk, icon:SystemUpdateAltIcon, onClick:() => showShrinkDiskSizeDialog(0)},
           ],
         },
       ];
@@ -495,8 +476,8 @@ export default function Details(props){
             title: texts.dataDisk + index.toString(),
             value: bytesToString(guest.disks[index]),
             operators: guest.running ? [disabledWhenRunningIcon] : [
-              <IconWithTooltip key={'extendDataDisk' + index.toString()} tips={texts.extendDisk} icon={ZoomOutMapIcon} onClick={() => showModifyDiskSizeDialog(currentIndex)}/>,
-              <IconWithTooltip key={'shrinkDataDisk' + index.toString()} tips={texts.shrinkDisk} icon={SystemUpdateAltIcon} onClick={() => showShrinkDiskSizeDialog(currentIndex)}/>,
+              {label:texts.extendDisk, icon:ZoomOutMapIcon, onClick:() => showModifyDiskSizeDialog(currentIndex)},
+              {label:texts.shrinkDisk, icon:SystemUpdateAltIcon, onClick:() => showShrinkDiskSizeDialog(currentIndex)},
             ],
           })
         }
@@ -554,19 +535,19 @@ export default function Details(props){
         {
           title: texts.cpuPriority,
           value: priorityLabel,
-          operators: [<IconWithTooltip key='priority' tips={texts.modify} icon={BuildIcon} onClick={showModifyCPUPriorityDialog}/>],
+          operators: [{label:texts.modify, icon:BuildIcon, onClick:showModifyCPUPriorityDialog}],
         },
         {
           title: texts.iops,
           value: guest.qos&&guest.qos.write_iops ? guest.qos.write_iops : texts.noLimit,
           operators: guest.running ? [disabledWhenRunningIcon] : [
-            <IconWithTooltip key='iops' tips={texts.modify} icon={BuildIcon} onClick={showModifyDiskIOPSDialog}/>
+            {label:texts.modify, icon:BuildIcon, onClick:showModifyDiskIOPSDialog},
           ],
         },
         {
           title: texts.bandwidth,
           value: bandwidthLabel,
-          operators: [<IconWithTooltip key='bandwidth' tips={texts.modify} icon={BuildIcon} onClick={showModifyNetworkBandwidthDialog}/>],
+          operators: [{label:texts.modify, icon:BuildIcon, onClick:showModifyNetworkBandwidthDialog}]
         },
       ]);
       content = (
@@ -584,7 +565,13 @@ export default function Details(props){
                       {row.value}
                     </TableCell>
                     <TableCell>
-                      {row.operators? row.operators : ''}
+                      {
+                        row.operators?
+                        row.operators.map(({ label, icon, onClick }, key) => (
+                            <IconButton key={key} label={label} icon={icon} onClick={onClick}/>
+                        ))
+                        : ''
+                      }
                     </TableCell>
                   </TableRow>
                 ))
@@ -734,6 +721,14 @@ export default function Details(props){
             onCancel={closeModifyNetworkBandwidthDialog}
             />
         </GridItem>
+        <ResetSecretDialog
+          lang={lang}
+          open={resetSecretVisiable}
+          guestID={guestID}
+          guestName={guest? guest.name : ""}
+          onSuccess={onResetSecretSuccess}
+          onCancel={closeResetSecretDialog}
+          />
       </GridContainer>
     );
 }

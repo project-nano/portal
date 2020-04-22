@@ -2,46 +2,40 @@ import React from "react";
 import Skeleton from '@material-ui/lab/Skeleton';
 import InputList from "components/CustomInput/InputList";
 import CustomDialog from "components/Dialog/CustomDialog.js";
-import { queryComputeCellsInPool, migrateInstancesInCell } from 'nano_api.js';
+import { queryComputeCellStorages, changeComputeCellStorage } from 'nano_api.js';
 
 const i18n = {
   'en':{
-    title: 'Migrate All Instance',
-    sourcePool: 'Source Pool',
-    sourceCell: 'Source Cell',
-    targetCell: 'Target Cell',
-    offline: 'Offline',
+    title: 'Change Storage Path',
+    current: "Current Storage Path",
+    location: "New Storage Location",
     cancel: 'Cancel',
     confirm: 'Confirm',
   },
   'cn':{
-    title: '迁移所有云主机实例',
-    sourcePool: '源资源池',
-    sourceCell: '源节点',
-    targetCell: '目标节点',
-    offline: '离线',
+    title: '修改存储路径',
+    current: "当前存储路径",
+    location: "新存储路径",
     cancel: '取消',
     confirm: '确认',
   },
 }
 
-export default function MigrateInstancesDialog(props){
+export default function ChangeStoragePathDialog(props){
   const defaultValues = {
-    targetCell: '',
+    current: "",
+    path: "",
   };
-  const { lang, open, sourcePool, sourceCell, onSuccess, onCancel } = props;
+  const { lang, open, pool, cell, onSuccess, onCancel } = props;
   const [ initialed, setInitialed ] = React.useState(false);
   const [ operatable, setOperatable ] = React.useState(true);
   const [ prompt, setPrompt ] = React.useState('');
   const [ mounted, setMounted ] = React.useState(false);
   const [ request, setRequest ] = React.useState(defaultValues);
-  const [ options, setOptions ] = React.useState({
-    cells: [],
-  });
   const texts = i18n[lang];
   const title = texts.title;
 
-  const onMigrateFail = React.useCallback(msg =>{
+  const onChangeFail = React.useCallback(msg =>{
     if(!mounted){
       return;
     }
@@ -60,23 +54,24 @@ export default function MigrateInstancesDialog(props){
     onCancel();
   }
 
-  const onMigrateSuccess = (sourceCell, targetCell) =>{
+  const onChangeSuccess = () =>{
     if(!mounted){
       return;
     }
     setOperatable(true);
     resetDialog();
-    onSuccess(sourceCell, targetCell);
+    onSuccess(request.path, cell, pool);
   }
 
   const handleConfirm = () =>{
-    setOperatable(false);
-    const targetCell = request.targetCell;
-    if ('' === targetCell){
-      onMigrateFail('select a target cell');
+    const newLocation = request.path;
+    if ('' === newLocation){
+      onChangeFail('input a new location');
       return;
     }
-    migrateInstancesInCell(sourcePool, sourceCell, targetCell, onMigrateSuccess, onMigrateFail);
+    setPrompt('');
+    setOperatable(false);
+    changeComputeCellStorage(pool, cell, newLocation, onChangeSuccess, onChangeFail);
   }
 
   const handleRequestPropsChanged = name => e =>{
@@ -91,46 +86,39 @@ export default function MigrateInstancesDialog(props){
   };
 
   React.useEffect(()=>{
-    if (!open){
+    if (!open || !pool || !cell){
       return;
     }
     setMounted(true);
-    const onQueryCellSuccess = dataList => {
+    const onQueryPathsSuccess = payload => {
       if(!mounted){
         return;
       }
-      var cellList = [];
-      dataList.forEach(cell =>{
-        if (cell.name !== sourceCell){
-          let label;
-          if(cell.alive){
-            label = cell.name + '('+ cell.address +')';
-          }else{
-            label = cell.name + '('+ texts.offline +')';
-          }
-
-          cellList.push({
-            label: label,
-            value: cell.name,
-            disabled: !cell.alive,
-          })
-        }
-      });
-      if (0 === cellList.length){
-        onMigrateFail('no target cell available');
+      if (!payload.system){
+        onChangeFail('no system paths available');
         return;
       }
-      setOptions({
-        cells: cellList,
-      });
+      if (0 === payload.system.length){
+        onChangeFail('no system paths available');
+        return;
+      }
+      var currentPath = payload.system[0];
+      if (!currentPath){
+        onChangeFail('no system paths available');
+        return;
+      }
+      setRequest({
+        current: currentPath,
+        path: "",
+      })
       setInitialed(true);
     };
 
-    queryComputeCellsInPool(sourcePool, onQueryCellSuccess, onMigrateFail);
+    queryComputeCellStorages(pool, cell, onQueryPathsSuccess, onChangeFail);
     return () => {
       setMounted(false);
     }
-  }, [mounted, open, sourcePool, sourceCell, onMigrateFail, texts.offline]);
+  }, [mounted, open, pool, cell, onChangeFail]);
 
   //begin render
   var buttons = [{
@@ -145,8 +133,8 @@ export default function MigrateInstancesDialog(props){
     const inputs = [
       {
         type: "text",
-        label: texts.sourcePool,
-        value: sourcePool,
+        label: texts.current,
+        value: request.current,
         disabled: true,
         oneRow: true,
         xs: 12,
@@ -154,23 +142,13 @@ export default function MigrateInstancesDialog(props){
       },
       {
         type: "text",
-        label: texts.sourceCell,
-        value: sourceCell,
-        disabled: true,
-        oneRow: true,
-        xs: 12,
-        sm: 8,
-      },
-      {
-        type: "select",
-        label: texts.targetCell,
-        onChange: handleRequestPropsChanged('targetCell'),
-        value: request.targetCell,
-        options: options.cells,
+        label: texts.location,
+        onChange: handleRequestPropsChanged('path'),
+        value: request.path,
         required: true,
         oneRow: true,
         xs: 12,
-        sm: 10,
+        sm: 8,
       },
     ];
 

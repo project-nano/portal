@@ -5,6 +5,7 @@ import PublishIcon from '@material-ui/icons/Publish';
 import DeleteIcon from '@material-ui/icons/Delete';
 import SettingsIcon from '@material-ui/icons/Settings';
 import BuildIcon from '@material-ui/icons/Build';
+import GetAppIcon from '@material-ui/icons/GetApp';
 import Divider from '@material-ui/core/Divider';
 import Box from '@material-ui/core/Box';
 import Chip from '@material-ui/core/Chip';
@@ -25,12 +26,13 @@ import ModifyDialog from "views/DiskImages/ModifyDialog.js";
 import BuildDialog from "views/DiskImages/BuildDialog.js";
 import { bytesToString } from 'utils.js';
 import { searchDiskImages, writeLog } from "nano_api.js";
-
+// import { getDiskImageURL } from "nano_api.js";
 
 const i18n = {
   'en':{
     modify: 'Modify Info',
     delete: 'Delete Image',
+    download: "Download Image",
     createTime: 'Created Time',
     modifyTime: 'Modified Time',
     uploadButton: "Upload New Disk Image",
@@ -40,6 +42,7 @@ const i18n = {
   'cn':{
     modify: '修改镜像信息',
     delete: '删除镜像',
+    download: "下载镜像",
     createTime: '创建时间',
     modifyTime: '修改时间',
     uploadButton: "上传新磁盘镜像",
@@ -235,6 +238,11 @@ export default function DiskImages(props){
                 label: texts.modify,
                 icon: SettingsIcon,
                 onClick: () => showModifyDialog(image.id),
+              },
+              {
+                label: texts.download,
+                icon: GetAppIcon,
+                // href: getDiskImageURL(image.id),
               },
               {
                 label: texts.delete,

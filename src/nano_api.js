@@ -2,8 +2,8 @@ import axios from "axios";
 import { getLoggedSession } from 'utils.js';
 
 // const apiRoot = 'http://201.18.21.153:5870/api/v1';
-// const apiRoot = 'http://192.168.3.26:5870/api/v1';
-const apiRoot = 'http://192.168.1.111:5870/api/v1';
+const apiRoot = 'http://192.168.3.26:5870/api/v1';
+// const apiRoot = 'http://192.168.1.111:5870/api/v1';
 // const apiRoot = '/api/v1';
 const HeaderNanoSession = "Nano-Session";
 const currentVersion = '1.2.0';
@@ -879,6 +879,11 @@ export function uploadDiskImage(id, file, onProgress, onSuccess, onFail){
     onSuccess(id);
   }
   uploadBinary(url, 'image', file, onProgress, onOperateSuccess, onFail);
+}
+
+export function getDiskImageURL(id){
+  const url = apiRoot + '/disk_images/' + id + '/file/';
+  return url;
 }
 
 //batch operates
