@@ -584,9 +584,7 @@ export default function Details(props){
 
       title = texts.title + guest.name;
       buttons = [
-        <Button size="sm" color="info" round onClick={() =>{
-          props.history.goBack();
-          }}>
+        <Button size="sm" color="info" round href="/admin/instances/">
           <NavigateBeforeIcon />{texts.back}
         </Button>,
       ];

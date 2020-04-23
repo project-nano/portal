@@ -22,6 +22,7 @@ import AddressPools from 'views/AddressPools/AddressPools.js';
 import StoragePools from 'views/StoragePools/StoragePools.js';
 import MediaImages from 'views/MediaImages/MediaImages.js';
 import DiskImages from 'views/DiskImages/DiskImages.js';
+import SystemTemplates from 'views/SystemTemplates/SystemTemplates.js';
 import Instances from 'views/Instances/Instances.js';
 import Users from 'views/Users/Main';
 import Visibilities from 'views/Visibilities/Visibilities';
@@ -37,6 +38,7 @@ import AlbumIcon from '@material-ui/icons/Album';
 import PeopleIcon from '@material-ui/icons/People';
 import BorderColorIcon from '@material-ui/icons/BorderColor';
 import VisibilityIcon from '@material-ui/icons/Visibility';
+import TuneIcon from '@material-ui/icons/Tune';
 
 const dashboardRoutes = [
   {
@@ -114,6 +116,17 @@ const dashboardRoutes = [
     },
     icon: AlbumIcon,
     component: MediaImages,
+    layout: "/admin"
+  },
+  {
+    path: "/system_templates",
+    name: "templates",
+    display: {
+      'cn': '系统模板',
+      'en': 'System Templates',
+    },
+    icon: TuneIcon,
+    component: SystemTemplates,
     layout: "/admin"
   },
   {

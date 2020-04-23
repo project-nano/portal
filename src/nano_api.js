@@ -2,9 +2,9 @@ import axios from "axios";
 import { getLoggedSession } from 'utils.js';
 
 // const apiRoot = 'http://201.18.21.153:5870/api/v1';
-const apiRoot = 'http://192.168.3.26:5870/api/v1';
+// const apiRoot = 'http://192.168.3.26:5870/api/v1';
 // const apiRoot = 'http://192.168.1.111:5870/api/v1';
-// const apiRoot = '/api/v1';
+const apiRoot = '/api/v1';
 const HeaderNanoSession = "Nano-Session";
 const currentVersion = '1.2.0';
 
@@ -22,6 +22,7 @@ export function getAllMenus(lang){
       instance: 'Instances',
       diskImage: 'Disk Image',
       mediaImage: 'Media Image',
+      systemTempaltes: 'System Templates',
       user: 'Users',
       log: 'Logs',
       visibility: 'Resource Visibility',
@@ -34,6 +35,7 @@ export function getAllMenus(lang){
       instance: '云主机实例',
       diskImage: '磁盘镜像',
       mediaImage: '光盘镜像',
+      systemTempaltes: '系统模板',
       user: '用户',
       log: '日志',
       visibility: '资源可见性',
@@ -68,6 +70,10 @@ export function getAllMenus(lang){
     {
       value: 'media',
       label: texts.mediaImage,
+    },
+    {
+      value: 'templates',
+      label: texts.systemTempaltes,
     },
     {
       value: 'user',
@@ -1074,7 +1080,7 @@ export function deleteSystemTemplate(templateID, onSuccess, onFail){
   const onOperateSuccess = () =>{
     onSuccess(templateID);
   }
-  deleteRequest(url, "", onOperateSuccess, onFail);
+  deleteRequest(url, onOperateSuccess, onFail);
 }
 
 //roles

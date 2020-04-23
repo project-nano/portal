@@ -1,6 +1,13 @@
 # Change Log
 
-## [1.2.0] - 2020-04-18
+## [1.2.0] - 2020-04-23
+
+### Added
+
+- System templates management
+- Create guest using templates
+- Change the storage path of Cell
+- Reset monitor secret of guest
 
 ### Changed
 

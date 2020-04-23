@@ -41,10 +41,14 @@ export default function ModifyDialog(props){
   const texts = i18n[lang];
   const title = texts.title + ' ' + pool;
 
-  const onModifyFail = (msg) =>{
+  const onModifyFail =React.useCallback(msg =>{
+    if(!mounted){
+      return;
+    }
     setOperatable(true);
     setPrompt(msg);
-  }
+  }, [mounted]);
+
   const resetDialog = () =>{
     setPrompt('');
     setRequest(defaultValues);
@@ -136,7 +140,7 @@ export default function ModifyDialog(props){
     return () => {
       setMounted(false);
     }
-  }, [mounted, open, pool]);
+  }, [mounted, open, pool, onModifyFail]);
 
   //begin render
 

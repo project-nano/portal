@@ -81,6 +81,7 @@ const ModifyDialog = (props) =>{
   }
 
   const handleConfirm = () =>{
+    setPrompt('');
     setOperatable(false);
     let storage, address;
     if (defaultOption === request.storage){
