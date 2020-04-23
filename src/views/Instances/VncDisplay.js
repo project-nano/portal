@@ -179,3 +179,98 @@ export default class VncDisplay extends React.Component {
     );
   }
 }
+
+// export default function VncDisplay(props){
+//   const { url, password, bindFuncs, unbindFuncs } = props;
+//   const [ canvas, setCanvas ] = React.useState(null);
+//   const [ initialed, setInitialed ] = React.useState(false);
+//   const [ connection, setConnection ] = React.useState(null);
+//   const [ mounted, setMounted ] = React.useState(false);
+//
+//   const sendEmergencyKeys = React.useCallback(() =>{
+//     if (!mounted){
+//       return;
+//     }
+//     if (!connection){
+//       return;
+//     }
+//     connection.sendCtrlAltDel();
+//   }, [mounted, connection]);
+//
+//   const disconnect = React.useCallback(() =>{
+//     if (!connection){
+//       return;
+//     }
+//     connection.disconnect();
+//     setConnection(null);
+//   }, [connection]);
+//
+//   const connect = React.useCallback(() =>{
+//     if (connection){
+//       disconnect();
+//     }
+//
+//     if (!canvas) {
+//       return;
+//     }
+//
+//     const options = {
+//       credentials: {
+//         password: password,
+//       },
+//       focusOnClick: true,
+//     };
+//
+//     var conn = new RFB(canvas, url, options);
+//     setConnection(conn);
+//   }, [connection, canvas, disconnect, password, url]);
+//
+//   const bindRef = ref =>{
+//     setCanvas(ref);
+//   }
+//
+//   const onMouseEnter = () =>{
+//     if (!mounted){
+//       return;
+//     }
+//     if (!connection){
+//       return;
+//     }
+//     connection.focus();
+//   }
+//
+//   const onMouseLeave = () =>{
+//     if (!mounted){
+//       return;
+//     }
+//     if (!connection){
+//       return;
+//     }
+//     connection.blur();
+//   }
+//
+//   React.useEffect(()=>{
+//     if (!canvas || initialed){
+//       return;
+//     }
+//     setMounted(true);
+//     connect();
+//     bindFuncs(sendEmergencyKeys);
+//     setInitialed(true);
+//     return () => {
+//       unbindFuncs();
+//       disconnect();
+//       setMounted(false);
+//       setInitialed(false);
+//     }
+//   }, [canvas, initialed, connect, bindFuncs, unbindFuncs,
+//     disconnect, sendEmergencyKeys]);
+//
+//   return (
+//     <div
+//       ref={bindRef}
+//       onMouseEnter={onMouseEnter}
+//       onMouseLeave={onMouseLeave}
+//     />
+//   )
+// }

@@ -49,6 +49,7 @@ const i18n = {
 export default function ControlInstance(props){
     const instanceID = props.match.params.id;
     const [ channel, setChannel ] = React.useState(null);
+    const [ sendKeys, setSendKeys ] = React.useState(null);
 
     //for dialog
     const [ insertMediaDialogVisible, setInsertMediaDialogVisible ] = React.useState(false);
@@ -124,6 +125,16 @@ export default function ControlInstance(props){
         if(channel&&channel.delegate&&channel.delegate.sendEmergencyKeys){
           channel.delegate.sendEmergencyKeys();
         }
+        // if (sendKeys){
+        //   sendKeys();
+        // }
+    }
+
+    const bindFuncs = (send) =>{
+      setSendKeys(send);
+    }
+    const unbindFuncs = () =>{
+      setSendKeys(null);
     }
 
     React.useEffect(() =>{
@@ -146,12 +157,6 @@ export default function ControlInstance(props){
     }, [instanceID, onMonitorFail]);
 
 
-    //reder begin
-    var session = getLoggedSession();
-    if (null === session){
-      return redirectToLogin();
-    }
-
     const { lang } = props;
     const texts = i18n[lang];
     let content, headers;
@@ -162,6 +167,12 @@ export default function ControlInstance(props){
       const url = getMonitorURL(channel.channel);
       content = (
         <VncDisplay url={url} password={channel.password} delegate={channel.delegate}/>
+        // <VncDisplay
+        //   url={url}
+        //   password={channel.password}
+        //   bindFuncs={bindFuncs}
+        //   unbindFuncs={unbindFuncs}
+        //   />
       );
       const operators = [
         {
