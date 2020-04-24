@@ -57,7 +57,7 @@ export default function Header(props) {
   const version = (
     <Box mr={2}>
       <Typography component='span'>
-        {'Project Nano ' + getCurrentVersion() + ' © 2018~2020.'}
+        {'Project Nano ' + getCurrentVersion() + ' © 2018~2020'}
       </Typography>
     </Box>
   );
@@ -81,8 +81,10 @@ export default function Header(props) {
             {makeBrand()}
           </Button>
         </div>
-        {version}
-        {manualButton}
+        <Hidden smDown>
+          {version}
+          {manualButton}
+        </Hidden>
         <LanguageSelector lang={lang} setLang={setLang}/>
         <Hidden smDown implementation="css">
           <AdminNavbarLinks lang={lang}/>

@@ -12,6 +12,7 @@
 ### Changed
 
 - Optimize most pages for data list and dialog
+- Optimize keyboard focus for vnc page
 
 ### Fixed
 

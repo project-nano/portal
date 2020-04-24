@@ -197,7 +197,7 @@ const SinglePoolStatus = props => {
   })
 
   const coresChart = (
-    <GridItem xs={8} sm={6} md={3} key='cores-usage'>
+    <GridItem xs={12} sm={6} md={3} key='cores-usage'>
       <Box m={0} p={0} className={classes.coresChart} boxShadow={2}>
         <LineChart
           series={[usedCores]}
@@ -223,7 +223,7 @@ const SinglePoolStatus = props => {
     availableMemory.data.push(data.available)
   })
   const memoryChart = (
-    <GridItem xs={8} sm={6} md={3} key='memory-usage'>
+    <GridItem xs={12} sm={6} md={3} key='memory-usage'>
       <Box m={0} p={0} className={classes.memoryChart} boxShadow={2}>
         <StackedBarChart
           series={[usedMemory, availableMemory]}
@@ -279,7 +279,7 @@ const SinglePoolStatus = props => {
   }
   const networkSeries = [ networkReceive, networkSend ];
   const networkChart = (
-    <GridItem xs={8} sm={6} md={3} key='network-usage'>
+    <GridItem xs={12} sm={6} md={3} key='network-usage'>
       <Box m={0} p={0} className={classes.networkChart} boxShadow={2}>
         <MultiBarChart
           series={networkSeries}
@@ -306,7 +306,7 @@ const SinglePoolStatus = props => {
   })
   const diskSeries = [ diskWrite, diskRead ];
   const diskIOChart = (
-    <GridItem xs={8} sm={6} md={3} key='io-usage'>
+    <GridItem xs={12} sm={6} md={3} key='io-usage'>
       <Box m={0} p={0} className={classes.diskChart} boxShadow={2}>
         <MultiBarChart
           series={diskSeries}

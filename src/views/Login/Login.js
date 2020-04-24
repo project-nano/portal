@@ -181,7 +181,7 @@ export default function Login(props){
     <Box component='div' className={classes.background}>
       <Container maxWidth='lg'>
         <Grid container justify="center">
-          <Grid item xs={12} sm={8} md={4}>
+          <Grid item xs={10} sm={6} md={4}>
             <Box mt={20} p={0}>
               <Card>
                 <CardHeader color="primary">

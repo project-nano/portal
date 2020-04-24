@@ -21,7 +21,6 @@ import CardBody from "components/Card/CardBody.js";
 import Snackbar from "components/Snackbar/Snackbar.js";
 import VncDisplay from "views/Instances/VncDisplay.js";
 import InsertMediaDialog from "views/Instances/InsertMediaDialog.js";
-import { getLoggedSession, redirectToLogin } from 'utils.js';
 import { getInstanceConfig, openMonitorChannel, getMonitorURL, ejectMedia,
   stopInstance, restartInstance, resetInstance, writeLog } from "nano_api.js";
 
@@ -122,20 +121,20 @@ export default function ControlInstance(props){
     }
 
     const handleEmergencyKeys = () =>{
-        if(channel&&channel.delegate&&channel.delegate.sendEmergencyKeys){
-          channel.delegate.sendEmergencyKeys();
-        }
-        // if (sendKeys){
-        //   sendKeys();
+        // if(channel&&channel.delegate&&channel.delegate.sendEmergencyKeys){
+        //   channel.delegate.sendEmergencyKeys();
         // }
+        if (sendKeys){
+          sendKeys();
+        }
     }
 
     const bindFuncs = (send) =>{
       setSendKeys(send);
     }
-    const unbindFuncs = () =>{
-      setSendKeys(null);
-    }
+    // const unbindFuncs = () =>{
+    //   setSendKeys(null);
+    // }
 
     React.useEffect(() =>{
       const onGetInstanceSuccess = status =>{
@@ -166,13 +165,13 @@ export default function ControlInstance(props){
     }else{
       const url = getMonitorURL(channel.channel);
       content = (
-        <VncDisplay url={url} password={channel.password} delegate={channel.delegate}/>
-        // <VncDisplay
-        //   url={url}
-        //   password={channel.password}
-        //   bindFuncs={bindFuncs}
-        //   unbindFuncs={unbindFuncs}
-        //   />
+        // <VncDisplay url={url} password={channel.password} delegate={channel.delegate}/>
+        <VncDisplay
+          url={url}
+          password={channel.password}
+          bindFuncs={bindFuncs}
+          // unbindFuncs={unbindFuncs}
+          />
       );
       const operators = [
         {

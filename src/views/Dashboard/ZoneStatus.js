@@ -180,7 +180,7 @@ export default function ZoneStatus(props) {
   if (!status){
     content = <Skeleton variant="rect" style={{height: '10rem'}}/>;
   }else{
-    var startTime = new Date(status.start_time);
+    var startTime = new Date(status.start_time.replace(' ', 'T'));
     var now = new Date();
     var elapsedSeconds = Math.floor((now.getTime() - startTime.getTime())/1000);
     var elapsedDays = Math.floor(elapsedSeconds/(24*3600));
@@ -217,7 +217,7 @@ export default function ZoneStatus(props) {
       color: seriesColor1,
     }];
     const poolChart = (
-      <GridItem xs={6} sm={4} md={3} key='pool'>
+      <GridItem xs={12} sm={4} md={3} key='pool'>
         <PieCard
           title={texts.pools}
           series={poolData}
@@ -236,7 +236,7 @@ export default function ZoneStatus(props) {
       color: seriesColor2,
     }];
     const cellChart = (
-      <GridItem xs={6} sm={4} md={3} key='cell'>
+      <GridItem xs={12} sm={4} md={3} key='cell'>
         <PieCard
           title={texts.cells}
           series={cellData}
@@ -263,7 +263,7 @@ export default function ZoneStatus(props) {
       color: seriesColor4,
     }];
     const instanceChart = (
-      <GridItem xs={6} sm={4} md={3} key='instance'>
+      <GridItem xs={12} sm={4} md={3} key='instance'>
         <PieCard
           title={texts.instances}
           series={instanceData}
@@ -284,7 +284,7 @@ export default function ZoneStatus(props) {
       color: seriesColor4,
     }];
     const storageChart = (
-      <GridItem xs={6} sm={4} md={3} key='disks'>
+      <GridItem xs={12} sm={4} md={3} key='disks'>
         <PieCard
           title={texts.disks}
           series={storageData}
@@ -312,7 +312,7 @@ export default function ZoneStatus(props) {
     })
 
     const coresChart = (
-      <GridItem xs={8} sm={6} md={4} key='cores-usage'>
+      <GridItem xs={12} sm={6} md={4} key='cores-usage'>
         <LineCard
           title={texts.coreUsage}
           series={[usedCores]}
@@ -338,7 +338,7 @@ export default function ZoneStatus(props) {
       availableMemory.data.push(data.available)
     })
     const memoryChart = (
-      <GridItem xs={8} sm={6} md={4} key='memory-usage'>
+      <GridItem xs={12} sm={6} md={4} key='memory-usage'>
         <StackedBarCard
           title={texts.memoryUsage}
           series={[usedMemory, availableMemory]}
@@ -379,7 +379,7 @@ export default function ZoneStatus(props) {
     const networkSeries = [ networkReceive, networkSend ];
     const mbBased = 1 << 20;
     const networkChart = (
-      <GridItem xs={8} sm={6} md={4} key='network-usage'>
+      <GridItem xs={12} sm={6} md={4} key='network-usage'>
         <MultiBarCard
           title={texts.network}
           series={networkSeries}
@@ -406,7 +406,7 @@ export default function ZoneStatus(props) {
     })
     const diskSeries = [ diskWrite, diskRead ];
     const diskIOChart = (
-      <GridItem xs={8} sm={6} md={4} key='io-usage'>
+      <GridItem xs={12} sm={6} md={4} key='io-usage'>
         <MultiBarCard
           title={texts.diskIO}
           series={diskSeries}
