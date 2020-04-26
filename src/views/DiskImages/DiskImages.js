@@ -25,7 +25,7 @@ import UploadDialog from "views/DiskImages/UploadDialog.js";
 import ModifyDialog from "views/DiskImages/ModifyDialog.js";
 import BuildDialog from "views/DiskImages/BuildDialog.js";
 import { bytesToString } from 'utils.js';
-import { searchDiskImages, writeLog } from "nano_api.js";
+import { searchDiskImages,getDiskImageURL, writeLog } from "nano_api.js";
 // import { getDiskImageURL } from "nano_api.js";
 
 const i18n = {
@@ -242,7 +242,10 @@ export default function DiskImages(props){
               {
                 label: texts.download,
                 icon: GetAppIcon,
-                // href: getDiskImageURL(image.id),
+                onClick: () =>{
+                  var downloadURL = getDiskImageURL(image.id);
+                  window.location.href = downloadURL;
+                },
               },
               {
                 label: texts.delete,
