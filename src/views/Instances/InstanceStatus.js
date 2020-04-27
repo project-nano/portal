@@ -24,7 +24,7 @@ import MultiBarChart from "views/Dashboard/MultiBarChart.js";
 import dashboardStyles from "assets/jss/material-dashboard-react/views/dashboardStyle.js";
 import fontStyles from "assets/jss/material-dashboard-react/components/typographyStyle.js";
 
-import { getLoggedSession, redirectToLogin, truncateToRadix, bytesToString } from 'utils.js';
+import { truncateToRadix, bytesToString } from 'utils.js';
 import { getInstanceStatus, getInstanceConfig } from "nano_api.js";
 
 import {
@@ -422,23 +422,27 @@ export default function InstanceStatus(props) {
   const DiskIOArraySize = 5;
   const IntervalInSecond = 2;
   const instanceID = props.match.params.id;
+  const [ initialed, setInitialed ] = React.useState(false);
+  const [ mounted, setMounted ] = React.useState(false);
   const [ instance, setInstance ] = React.useState(null);
   const [ notifyMessage, setNotifyMessage ] = React.useState('');
 
-  // const texts = i18n[props.lang];
-
-  const closeNotify = () => {
+  const closeNotify = React.useCallback(() => {
     setNotifyMessage("");
-  }
+  }, [setNotifyMessage]);
 
   const showErrorMessage = React.useCallback((msg) => {
+    if (!mounted){
+      return;
+    }
     const notifyDuration = 3000;
     setNotifyMessage(msg);
     setTimeout(closeNotify, notifyDuration);
-  }, [setNotifyMessage]);
+  }, [setNotifyMessage, closeNotify, mounted]);
 
   React.useEffect(() =>{
-    var mounted = true
+    setMounted(true)
+
     var coreRecords = new Array(CoreArraySize).fill({
       current: 0,
       max: 0,
@@ -466,104 +470,107 @@ export default function InstanceStatus(props) {
     });
 
     var speedReady = false;
-    let timerID;
+    let timerID, poolName, cellName;
+    const onGetStatusSuccess = status => {
+      if (!mounted){
+        return;
+      }
+      const MiB = 1 << 20;
+      coreRecords.shift();
+      coreRecords.push({
+        current: truncateToRadix(status.cpu_usage, 2),
+        max: status.cores,
+      });
+      let usedMemory, availableMemory;
+      if (status.memory_available > status.memory){
+        showErrorMessage("abnormal available memory, " + status.memory_available + " > allocated " +  status.memory);
+        availableMemory = status.memory;
+        usedMemory = 0;
+      }else{
+        availableMemory = status.memory_available;
+        usedMemory = status.memory - status.memory_available;
+      }
+      memoryRecords.shift();
+      memoryRecords.push({
+        available: truncateToRadix(availableMemory/MiB, 2),
+        used: truncateToRadix( usedMemory/MiB, 2),
+      });
+      networkRecords.shift();
+      networkRecords.push({
+        receive: status.bytes_received,
+        send: status.bytes_sent,
+      });
+      diskRecords.shift();
+      diskRecords.push({
+        write: status.bytes_written,
+        read: status.bytes_read,
+      });
 
-    const onGetGuestInfoSuccess = config =>{
-      var poolName = config.pool;
-      var cellName = config.cell;
-
-      const queryInstanceStatus = () =>{
-        const MiB = 1 << 20;
-        const onOperateSuccess = status => {
-
-          coreRecords.shift();
-          coreRecords.push({
-            current: truncateToRadix(status.cpu_usage, 2),
-            max: status.cores,
-          });
-          memoryRecords.shift();
-          memoryRecords.push({
-            available: truncateToRadix(status.memory_available/MiB, 2),
-            used: truncateToRadix((status.memory - status.memory_available)/MiB, 2),
-          });
-          networkRecords.shift();
-          networkRecords.push({
-            receive: status.bytes_received,
-            send: status.bytes_sent,
-            // receive: 100 * MiB * Math.random(),
-            // send: 100 * MiB * Math.random(),
-          });
-          diskRecords.shift();
-          diskRecords.push({
-            write: status.bytes_written,
-            read: status.bytes_read,
-            // write: 10 * MiB * Math.random(),
-            // read: 10 * MiB * Math.random(),
-          });
-
-          if(!speedReady){
-            speedReady = true;
-          }else{
-            const receiveSpeed = (networkRecords[networkRecords.length - 1].receive - networkRecords[networkRecords.length - 2].receive) / IntervalInSecond;
-            const sendSpeed = (networkRecords[networkRecords.length - 1].send - networkRecords[networkRecords.length - 2].send) / IntervalInSecond;
-            const writeSpeed = (diskRecords[diskRecords.length - 1].write - diskRecords[diskRecords.length - 2].write) / IntervalInSecond;
-            const readSpeed = (diskRecords[diskRecords.length - 1].read - diskRecords[diskRecords.length - 2].read) / IntervalInSecond;
-            networkSpeed.shift();
-            networkSpeed.push({
-              receive: receiveSpeed,
-              send: sendSpeed,
-            });
-            diskSpeed.shift();
-            diskSpeed.push({
-              write: writeSpeed,
-              read: readSpeed,
-            });
-          }
-
-          const updated = {
-            ...status,
-            pool: poolName,
-            cell: cellName,
-            coreRecords: coreRecords,
-            memoryRecords: memoryRecords,
-            networkRecords: networkRecords,
-            diskRecords: diskRecords,
-            networkSpeed: networkSpeed,
-            diskSpeed: diskSpeed,
-          };
-          setInstance(updated);
-        }
-        getInstanceStatus(instanceID, onOperateSuccess);
+      if(!speedReady){
+        speedReady = true;
+      }else{
+        const receiveSpeed = (networkRecords[networkRecords.length - 1].receive - networkRecords[networkRecords.length - 2].receive) / IntervalInSecond;
+        const sendSpeed = (networkRecords[networkRecords.length - 1].send - networkRecords[networkRecords.length - 2].send) / IntervalInSecond;
+        const writeSpeed = (diskRecords[diskRecords.length - 1].write - diskRecords[diskRecords.length - 2].write) / IntervalInSecond;
+        const readSpeed = (diskRecords[diskRecords.length - 1].read - diskRecords[diskRecords.length - 2].read) / IntervalInSecond;
+        networkSpeed.shift();
+        networkSpeed.push({
+          receive: receiveSpeed,
+          send: sendSpeed,
+        });
+        diskSpeed.shift();
+        diskSpeed.push({
+          write: writeSpeed,
+          read: readSpeed,
+        });
       }
 
-      queryInstanceStatus();
+      const updated = {
+        ...status,
+        pool: poolName,
+        cell: cellName,
+        coreRecords: coreRecords,
+        memoryRecords: memoryRecords,
+        networkRecords: networkRecords,
+        diskRecords: diskRecords,
+        networkSpeed: networkSpeed,
+        diskSpeed: diskSpeed,
+      };
+      setInstance(updated);
+      setInitialed(true);
+    }
+
+    const onGetConfigSuccess = config =>{
+      if (!mounted){
+        return;
+      }
+      poolName = config.pool;
+      cellName = config.cell;
+
+      getInstanceStatus(instanceID, onGetStatusSuccess, showErrorMessage);
+
       const updateInterval = IntervalInSecond * 1000;
       timerID = setInterval(()=>{
-        if (mounted){
-          queryInstanceStatus();
+        if (!mounted){
+          return;
         }
+        getInstanceStatus(instanceID, onGetStatusSuccess, showErrorMessage);
       }, updateInterval);
     }
 
     //get config
-    getInstanceConfig(instanceID, onGetGuestInfoSuccess, showErrorMessage)
+    getInstanceConfig(instanceID, onGetConfigSuccess, showErrorMessage)
 
     return () =>{
-      mounted = false;
+      setMounted(false);
       if(timerID){
           clearInterval(timerID);
       }
     }
-  }, [instanceID, showErrorMessage]);
-
-  //reder begin
-  var session = getLoggedSession();
-  if (null === session){
-    return redirectToLogin();
-  }
+  }, [instanceID, showErrorMessage, mounted, initialed]);
 
   let content, headers;
-  if (!instance){
+  if (!initialed){
     content = <Skeleton variant="rect" style={{height: '10rem'}}/>;
     headers = <Skeleton variant="rect" style={{height: '10rem'}}/>;
   }else{
@@ -572,6 +579,7 @@ export default function InstanceStatus(props) {
         <SingleInstanceStatus status={instance} lang={props.lang}/>
       </GridItem>
     );
+    // content = <div/>;
     const breadcrumbs = [
       <Link to={'/admin/instances/range/?pool=' + instance.pool} key={instance.pool}>{instance.pool}</Link>,
       <Link to={'/admin/instances/range/?pool=' + instance.pool + '&cell=' + instance.cell} key={instance.cell}>{instance.cell}</Link>,

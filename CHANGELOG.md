@@ -1,6 +1,6 @@
 # Change Log
 
-## [1.2.0] - 2020-04-23
+## [1.2.0] - 2020-04-27
 
 ### Added
 
@@ -18,6 +18,7 @@
 
 - Wrong disk space when value is integer
 - Set admin password fail
+- Crash when observing resource of guest without qga installed
 
 ## [1.1.0] - 2020-01-01
 
