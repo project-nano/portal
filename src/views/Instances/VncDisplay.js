@@ -2,50 +2,9 @@ import React from 'react';
 import RFB from '@novnc/novnc';
 
 export default function VncDisplay(props){
-  const { url, password, bindFuncs } = props;
+  const { url, password, callback } = props;
   const [ canvas, setCanvas ] = React.useState(null);
-  // const [ initialed, setInitialed ] = React.useState(false);
   const [ connection, setConnection ] = React.useState(null);
-  const [ mounted, setMounted ] = React.useState(false);
-
-  const sendEmergencyKeys = React.useCallback(() =>{
-    if (!mounted){
-      return;
-    }
-    if (!connection){
-      return;
-    }
-    connection.sendCtrlAltDel();
-  }, [mounted, connection]);
-
-  const disconnect = React.useCallback(() =>{
-    if (!connection){
-      return;
-    }
-    connection.disconnect();
-    setConnection(null);
-  }, [connection]);
-
-  const connect = React.useCallback(() =>{
-    if (connection){
-      disconnect();
-    }
-
-    if (!canvas) {
-      return;
-    }
-
-    const options = {
-      credentials: {
-        password: password,
-      },
-      focusOnClick: true,
-    };
-
-    var conn = new RFB(canvas, url, options);
-    conn.focus();
-    setConnection(conn);
-  }, [connection, canvas, disconnect, password, url]);
 
   const bindRef = ref =>{
     setCanvas(ref);
@@ -66,18 +25,58 @@ export default function VncDisplay(props){
   }
 
   React.useEffect(()=>{
-    if (!canvas || connection){
+    if (!canvas){
       return;
     }
-    setMounted(true);
+    var mounted = false;
+    let conn;
+    const sendEmergencyKeys = () =>{
+      if (!mounted){
+        return;
+      }
+      if (!conn){
+        return;
+      }
+      conn.sendCtrlAltDel();
+    };
+
+    const disconnect = () => {
+      if (!mounted){
+        return;
+      }
+      if (!conn){
+        return;
+      }
+      conn.disconnect();
+      conn = null;
+      setConnection(null);
+    };
+
+    const connect = () =>{
+      if (!mounted){
+        return;
+      }
+      const options = {
+        credentials: {
+          password: password,
+        },
+        focusOnClick: true,
+      };
+
+      conn = new RFB(canvas, url, options);
+      conn.focus();
+      setConnection(conn);
+    };
+
+    mounted = true;
     connect();
+    callback.onEmergency = sendEmergencyKeys;
+
     return () => {
       disconnect();
-      setMounted(false);
+      mounted = false;
     }
-  }, [canvas, connect, disconnect, connection]);
-
-  bindFuncs(sendEmergencyKeys);
+  }, [canvas, password, url, callback]);
 
   return (
     <div

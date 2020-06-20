@@ -1,5 +1,12 @@
 # Change Log
 
+## [1.3.0] - 2020-06-20
+
+### Fixed
+
+- Can't send ctrl+alt+delete on the monitor page
+- Unstable key focus on the monitor page
+
 ## [1.2.0] - 2020-04-27
 
 ### Added

@@ -48,8 +48,6 @@ const i18n = {
 export default function ControlInstance(props){
     const instanceID = props.match.params.id;
     const [ channel, setChannel ] = React.useState(null);
-    const [ sendKeys, setSendKeys ] = React.useState(null);
-
     //for dialog
     const [ insertMediaDialogVisible, setInsertMediaDialogVisible ] = React.useState(false);
     const [ notifyColor, setNotifyColor ] = React.useState('warning');
@@ -121,20 +119,10 @@ export default function ControlInstance(props){
     }
 
     const handleEmergencyKeys = () =>{
-        // if(channel&&channel.delegate&&channel.delegate.sendEmergencyKeys){
-        //   channel.delegate.sendEmergencyKeys();
-        // }
-        if (sendKeys){
-          sendKeys();
+        if(channel&&channel.delegate&&channel.delegate.onEmergency){
+          channel.delegate.onEmergency();
         }
     }
-
-    const bindFuncs = (send) =>{
-      setSendKeys(send);
-    }
-    // const unbindFuncs = () =>{
-    //   setSendKeys(null);
-    // }
 
     React.useEffect(() =>{
       const onGetInstanceSuccess = status =>{
@@ -165,12 +153,10 @@ export default function ControlInstance(props){
     }else{
       const url = getMonitorURL(channel.channel);
       content = (
-        // <VncDisplay url={url} password={channel.password} delegate={channel.delegate}/>
         <VncDisplay
           url={url}
           password={channel.password}
-          bindFuncs={bindFuncs}
-          // unbindFuncs={unbindFuncs}
+          callback={channel.delegate}
           />
       );
       const operators = [
