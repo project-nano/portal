@@ -1,11 +1,11 @@
 import axios from "axios";
 import { getLoggedSession } from 'utils.js';
 
-// const apiRoot = 'http://201.18.21.153:5870/api/v1';
+const apiRoot = 'http://192.168.3.224:5870/api/v1';
 // const apiRoot = 'http://192.168.3.26:5870/api/v1';
 // const apiRoot = 'http://192.168.1.111:5870/api/v1';
 // const apiRoot = 'http://192.168.1.64:5870/api/v1';
-const apiRoot = '/api/v1';
+// const apiRoot = '/api/v1';
 const HeaderNanoSession = "Nano-Session";
 const currentVersion = '1.2.0';
 
@@ -758,6 +758,19 @@ export function searchMediaImages(onSuccess, onFail){
   getRequest('/media_image_search/', onSuccess, onFail);
 }
 
+export function syncMediaImages(onSuccess, onFail){
+  var session = getLoggedSession();
+  if (null === session){
+    onFail('session expired');
+    return;
+  }
+  var request = {
+    owner: session.user,
+    group: session.group,
+  };
+  patchRequest('/media_images/', request, onSuccess, onFail);
+}
+
 export function getMediaImage(id, onSuccess, onFail){
   var url = '/media_images/' + id;
   getRequest(url, onSuccess, onFail);
@@ -822,6 +835,19 @@ export function uploadMediaImage(id, file, onProgress, onSuccess, onFail){
 //disk Images
 export function searchDiskImages(onSuccess, onFail){
   getRequest('/disk_image_search/', onSuccess, onFail);
+}
+
+export function syncDiskImages(onSuccess, onFail){
+  var session = getLoggedSession();
+  if (null === session){
+    onFail('session expired');
+    return;
+  }
+  var request = {
+    owner: session.user,
+    group: session.group,
+  };
+  patchRequest('/disk_images/', request, onSuccess, onFail);
 }
 
 export function getDiskImage(id, onSuccess, onFail){
@@ -1398,6 +1424,10 @@ function putRequest(url, request, onSuccess, onFail){
 
 function deleteRequest(url, onSuccess, onFail){
   callAxios('delete', url, null, onSuccess, onFail);
+}
+
+function patchRequest(url, request, onSuccess, onFail){
+  callAxios('patch', url, request, onSuccess, onFail);
 }
 
 function deleteRequestWithPayload(url, request, onSuccess, onFail){

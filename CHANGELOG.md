@@ -1,11 +1,16 @@
 # Change Log
 
-## [1.3.0] - 2020-06-20
+## [1.3.0] - 2020-11-11
+
+### Added
+
+- Synchronize disk/media images from local storage
 
 ### Fixed
 
 - Can't send ctrl+alt+delete on the monitor page
 - Unstable key focus on the monitor page
+- Images list crashed when no tags available
 
 ## [1.2.0] - 2020-04-27
 

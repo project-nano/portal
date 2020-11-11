@@ -5,6 +5,7 @@ import PublishIcon from '@material-ui/icons/Publish';
 import DeleteIcon from '@material-ui/icons/Delete';
 import SettingsIcon from '@material-ui/icons/Settings';
 import BuildIcon from '@material-ui/icons/Build';
+import CachedIcon from '@material-ui/icons/Cached';
 import GetAppIcon from '@material-ui/icons/GetApp';
 import Divider from '@material-ui/core/Divider';
 import Box from '@material-ui/core/Box';
@@ -24,6 +25,7 @@ import DeleteDialog from "views/DiskImages/DeleteDialog.js";
 import UploadDialog from "views/DiskImages/UploadDialog.js";
 import ModifyDialog from "views/DiskImages/ModifyDialog.js";
 import BuildDialog from "views/DiskImages/BuildDialog.js";
+import SyncDialog from "views/DiskImages/SyncDialog.js";
 import { bytesToString } from 'utils.js';
 import { searchDiskImages,getDiskImageURL, writeLog } from "nano_api.js";
 // import { getDiskImageURL } from "nano_api.js";
@@ -37,6 +39,7 @@ const i18n = {
     modifyTime: 'Modified Time',
     uploadButton: "Upload New Disk Image",
     buildButton: "Build New Disk Image",
+    syncButton: "Synchronize Local Images",
     noResource: "No images available",
   },
   'cn':{
@@ -47,6 +50,7 @@ const i18n = {
     modifyTime: '修改时间',
     uploadButton: "上传新磁盘镜像",
     buildButton: "构建新磁盘镜像",
+    syncButton: "同步本地镜像文件",
     noResource: "没有磁盘镜像",
   }
 }
@@ -68,7 +72,7 @@ function dataToNode(data, buttons, createLabel, modifyLabel){
         <Box display="flex" alignItems="center">
           <Box m={1}>{sizeLabel}</Box>
           {
-            tags.map(tag => <Box m={0} p={1} key={tag}><Chip label={tag}/></Box>)
+            tags?tags.map(tag => <Box m={0} p={1} key={tag}><Chip label={tag}/></Box>):<Box/>
           }
         </Box>
       </CardHeader>
@@ -97,6 +101,7 @@ export default function DiskImages(props){
     const [ buildDialogVisible, setBuildDialogVisible ] = React.useState(false);
     const [ modifyDialogVisible, setModifyDialogVisible ] = React.useState(false);
     const [ deleteDialogVisible, setDeleteDialogVisible ] = React.useState(false);
+    const [ syncDialogVisible, setSyncDialogVisible ] = React.useState(false);
     const [ selected, setSelected ] = React.useState('');
 
     const [ notifyColor, setNotifyColor ] = React.useState('warning');
@@ -209,6 +214,21 @@ export default function DiskImages(props){
       reloadAllData();
     };
 
+    //sync
+    const showSyncDialog = () =>{
+      setSyncDialogVisible(true);
+    }
+
+    const closeSyncDialog = () =>{
+      setSyncDialogVisible(false);
+    }
+
+    const onSyncSuccess = () =>{
+      closeSyncDialog();
+      showNotifyMessage('all disk images synchronized');
+      reloadAllData();
+    };
+
     React.useEffect(() =>{
       setMounted(true);
       reloadAllData();
@@ -278,6 +298,9 @@ export default function DiskImages(props){
                 <Box p={1}>
                   <Button size="sm" color="info" round onClick={showBuildDialog}><BuildIcon />{texts.buildButton}</Button>
                 </Box>
+                <Box p={1}>
+                  <Button size="sm" color="info" round onClick={showSyncDialog}><CachedIcon />{texts.syncButton}</Button>
+                </Box>
               </Box>
             </GridItem>
           </GridContainer>
@@ -332,6 +355,14 @@ export default function DiskImages(props){
             open={deleteDialogVisible}
             onSuccess={onDeleteSuccess}
             onCancel={closeDeleteDialog}
+            />
+        </GridItem>
+        <GridItem>
+          <SyncDialog
+            lang={lang}
+            open={syncDialogVisible}
+            onSuccess={onSyncSuccess}
+            onCancel={closeSyncDialog}
             />
         </GridItem>
       </GridContainer>

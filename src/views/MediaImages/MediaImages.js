@@ -2,6 +2,7 @@ import React from "react";
 // @material-ui/core components
 import Skeleton from '@material-ui/lab/Skeleton';
 import PublishIcon from '@material-ui/icons/Publish';
+import CachedIcon from '@material-ui/icons/Cached';
 import DeleteIcon from '@material-ui/icons/Delete';
 import SettingsIcon from '@material-ui/icons/Settings';
 import Divider from '@material-ui/core/Divider';
@@ -23,6 +24,7 @@ import IconButton from "components/CustomButtons/IconButton.js";
 import DeleteDialog from "views/MediaImages/DeleteDialog.js";
 import UploadDialog from "views/MediaImages/UploadDialog.js";
 import ModifyDialog from "views/MediaImages/ModifyDialog.js";
+import SyncDialog from "views/MediaImages/SyncDialog.js";
 import { bytesToString } from 'utils.js';
 import { searchMediaImages, writeLog } from "nano_api.js";
 
@@ -33,6 +35,7 @@ const i18n = {
     createTime: 'Created Time',
     modifyTime: 'Modified Time',
     uploadButton: "Upload New ISO",
+    syncButton: "Synchronize Local Images",
     noResource: "No images available",
   },
   'cn':{
@@ -41,6 +44,7 @@ const i18n = {
     createTime: '创建时间',
     modifyTime: '修改时间',
     uploadButton: "上传新光盘镜像",
+    syncButton: "同步本地镜像文件",
     noResource: "没有光盘镜像",
   }
 }
@@ -62,7 +66,7 @@ function dataToNode(data, buttons, createLabel, modifyLabel){
         <Box display="flex" alignItems="center">
           <Box m={1}>{sizeLabel}</Box>
           {
-            tags.map(tag => <Box m={0} p={1} key={tag}><Chip label={tag}/></Box>)
+            tags?tags.map(tag => <Box m={0} p={1} key={tag}><Chip label={tag}/></Box>):<Box/>
           }
         </Box>
       </CardHeader>
@@ -90,6 +94,7 @@ export default function MediaImages(props){
     const [ uploadDialogVisible, setUploadDialogVisible ] = React.useState(false);
     const [ modifyDialogVisible, setModifyDialogVisible ] = React.useState(false);
     const [ deleteDialogVisible, setDeleteDialogVisible ] = React.useState(false);
+    const [ syncDialogVisible, setSyncDialogVisible ] = React.useState(false);
     const [ selected, setSelected ] = React.useState('');
     const [ notifyColor, setNotifyColor ] = React.useState('warning');
     const [ notifyMessage, setNotifyMessage ] = React.useState("");
@@ -186,6 +191,21 @@ export default function MediaImages(props){
       reloadAllData();
     };
 
+    //sync
+    const showSyncDialog = () =>{
+      setSyncDialogVisible(true);
+    }
+
+    const closeSyncDialog = () =>{
+      setSyncDialogVisible(false);
+    }
+
+    const onSyncSuccess = () =>{
+      closeSyncDialog();
+      showNotifyMessage('all media images synchronized');
+      reloadAllData();
+    };
+
     React.useEffect(() =>{
       setMounted(true);
       reloadAllData();
@@ -239,8 +259,15 @@ export default function MediaImages(props){
       <GridContainer>
         <GridItem xs={12} sm={12} md={12}>
           <GridContainer>
-            <GridItem xs={3} sm={3} md={3}>
-              <Button size="sm" color="info" round onClick={showUploadDialog}><PublishIcon />{texts.uploadButton}</Button>
+            <GridItem xs={12} sm={6} md={4}>
+              <Box display="flex">
+                <Box p={1}>
+                  <Button size="sm" color="info" round onClick={showUploadDialog}><PublishIcon />{texts.uploadButton}</Button>
+                </Box>
+                <Box p={1}>
+                  <Button size="sm" color="info" round onClick={showSyncDialog}><CachedIcon />{texts.syncButton}</Button>
+                </Box>
+              </Box>
             </GridItem>
           </GridContainer>
         </GridItem>
@@ -286,6 +313,14 @@ export default function MediaImages(props){
             open={deleteDialogVisible}
             onSuccess={onDeleteSuccess}
             onCancel={closeDeleteDialog}
+            />
+        </GridItem>
+        <GridItem>
+          <SyncDialog
+            lang={lang}
+            open={syncDialogVisible}
+            onSuccess={onSyncSuccess}
+            onCancel={closeSyncDialog}
             />
         </GridItem>
       </GridContainer>
