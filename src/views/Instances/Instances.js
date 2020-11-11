@@ -6,6 +6,7 @@ import InstanceStatus from "views/Instances/InstanceStatus.js";
 import Snapshots from "views/Instances/Snapshots.js";
 import Details from "views/Instances/Details.js";
 import AllInstances from "views/Instances/AllInstances.js";
+import SecurityPolicies from "views/Instances/SecurityPolicies.js";
 
 export default function Instances(props){
   return (
@@ -25,6 +26,10 @@ export default function Instances(props){
         ...props,
       })}/>
       <Route path="/admin/instances/details/:id" render={(childrenProps)=> React.createElement(Details, {
+        ...childrenProps,
+        ...props,
+      })}/>
+      <Route path="/admin/instances/policies/:id" render={(childrenProps)=> React.createElement(SecurityPolicies, {
         ...childrenProps,
         ...props,
       })}/>

@@ -12,6 +12,7 @@ import CameraAltIcon from '@material-ui/icons/CameraAlt';
 import ReplayIcon from '@material-ui/icons/Replay';
 import ShowChartIcon from '@material-ui/icons/ShowChart';
 import BackupIcon from '@material-ui/icons/Backup';
+import SecurityIcon from '@material-ui/icons/Security';
 
 import DesktopWindowsIcon from '@material-ui/icons/DesktopWindows';
 import PowerSettingsNewIcon from '@material-ui/icons/PowerSettingsNew';
@@ -47,6 +48,7 @@ const i18n = {
     migrate: 'Migrate Instance',
     monitor: 'Monitor Resource Usage',
     detail: 'Instance Detail',
+    security: 'Security Policies',
     remoteControl: 'Remote Control',
     stop: 'Stop Instance',
     forceStop: 'Force Stop Instance',
@@ -69,6 +71,7 @@ const i18n = {
     migrate: '迁移云主机',
     monitor: '监控资源用量',
     detail: '实例详情',
+    security: '安全策略',
     remoteControl: '远程监控',
     stop: '停止云主机',
     forceStop: '强制终止云主机',
@@ -214,6 +217,12 @@ export default function InstanceRow(props){
     href: '/admin/instances/details/' + instance.id,
     target: '_blank',
   };
+  const securityOperator = {
+    tips: texts.security,
+    icon: SecurityIcon,
+    href: '/admin/instances/policies/' + instance.id,
+  };
+
 
   //for running instance
   const controllOperator = {
@@ -293,7 +302,7 @@ export default function InstanceRow(props){
     }else{
       operators.push(insertMediaOperator);
     }
-    operators = operators.concat([monitorOperator, detailOperator]);
+    operators = operators.concat([monitorOperator, detailOperator, securityOperator]);
   }else{
     const stoppedIcon = (
       <Tooltip
@@ -307,7 +316,7 @@ export default function InstanceRow(props){
     statusIcon = [stoppedIcon];
     operators = [startOperator, startWithMediaOperator, snapshotOperator,
       createImageOperator, resetSystemOperator, deleteOperator,
-      migrateOperator, monitorOperator, detailOperator];
+      migrateOperator, monitorOperator, detailOperator, securityOperator];
   }
   var addressLabel = '';
   if (instance.internal && instance.internal.network_address){

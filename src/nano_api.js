@@ -1,13 +1,13 @@
 import axios from "axios";
 import { getLoggedSession } from 'utils.js';
 
-const apiRoot = 'http://192.168.3.224:5870/api/v1';
-// const apiRoot = 'http://192.168.3.26:5870/api/v1';
+// const apiRoot = 'http://192.168.3.224:5870/api/v1';
+const apiRoot = 'http://192.168.3.26:5870/api/v1';
 // const apiRoot = 'http://192.168.1.111:5870/api/v1';
 // const apiRoot = 'http://192.168.1.64:5870/api/v1';
 // const apiRoot = '/api/v1';
 const HeaderNanoSession = "Nano-Session";
-const currentVersion = '1.2.0';
+const currentVersion = '1.3.0';
 
 export function getCurrentVersion(){
   return currentVersion;
@@ -752,6 +752,78 @@ export function migrateInstancesInCell(sourcePool, sourceCell, targetCell, onSuc
   postRequest('/migrations/', request, onOperateSuccess, onFail);
 }
 
+//guest security policy
+export function getGuestSecurityPolicy(guestID, onSuccess, onFail){
+  const url = "/guests/" + guestID + "/security_policy/";
+  getRequest(url, onSuccess, onFail);
+}
+
+export function changeGuestSecurityPolicyAction(guestID, action, onSuccess, onFail){
+  const url = "/guests/" + guestID + "/security_policy/default_action";
+  var request = {
+    action: action,
+  };
+  const onOperateSuccess = () =>{
+    onSuccess(guestID);
+  }
+  putRequest(url, request, onOperateSuccess, onFail);
+}
+
+export function addGuestSecurityRule(guestID, action, protocol, to_port, onSuccess, onFail){
+  const url = "/guests/" + guestID + "/security_policy/rules/";
+  var request = {
+    action: action,
+    protocol: protocol,
+    to_port: to_port,
+  };
+  const onOperateSuccess = () =>{
+    onSuccess(guestID);
+  }
+  postRequest(url, request, onOperateSuccess, onFail);
+}
+
+export function modifyGuestSecurityRule(guestID, index, action, protocol, to_port, onSuccess, onFail){
+  const url = "/guests/" + guestID + "/security_policy/rules/" + index;
+  var request = {
+    action: action,
+    protocol: protocol,
+    to_port: to_port,
+  };
+  const onOperateSuccess = () =>{
+    onSuccess(guestID);
+  }
+  putRequest(url, request, onOperateSuccess, onFail);
+}
+
+export function removeGuestSecurityRule(guestID, index, onSuccess, onFail){
+  const url = "/guests/" + guestID + "/security_policy/rules/" + index;
+  const onOperateSuccess = () =>{
+    onSuccess(guestID);
+  }
+  deleteRequest(url, onOperateSuccess, onFail);
+}
+
+export function moveUpGuestSecurityRule(guestID, index, onSuccess, onFail){
+  const url = '/guests/' + guestID + '/security_policy/rules/' + index + '/order';
+  const request = {
+    direction: "up",
+  }
+  const onOperateSuccess = () =>{
+    onSuccess(guestID);
+  }
+  putRequest(url, request, onOperateSuccess, onFail);
+}
+
+export function moveDownGuestSecurityRule(guestID, index, onSuccess, onFail){
+  const url = '/guests/' + guestID + '/security_policy/rules/' + index + '/order';
+  const request = {
+    direction: "down",
+  }
+  const onOperateSuccess = () =>{
+    onSuccess(guestID);
+  }
+  putRequest(url, request, onOperateSuccess, onFail);
+}
 
 //media Images
 export function searchMediaImages(onSuccess, onFail){
@@ -1108,6 +1180,141 @@ export function deleteSystemTemplate(templateID, onSuccess, onFail){
     onSuccess(templateID);
   }
   deleteRequest(url, onOperateSuccess, onFail);
+}
+
+//Security Policy Groups
+export function searchSecurityPolicyGroups(owner, group, enabledOnly, globalOnly, onSuccess, onFail){
+  let url = new URL('/search/security_policy_groups/');
+  if (owner){
+    url.searchParams.append("owner", owner);
+  }
+  if (group){
+    url.searchParams.append("group", group);
+  }
+  if (enabledOnly){
+    url.searchParams.append("enabled_only", enabledOnly);
+  }
+  if (globalOnly){
+    url.searchParams.append("global_only", globalOnly);
+  }
+  getRequest(url.toString(), onSuccess, onFail);
+}
+
+export function getSecurityPolicyGroup(policyID, onSuccess, onFail){
+  const url = '/security_policy_groups/' + policyID;
+  getRequest(url, onSuccess, onFail);
+}
+
+export function createSecurityPolicyGroup(name, description, enabled, isGlobal,
+  action, onSuccess, onFail){
+  const url = '/security_policy_groups/';
+  var session = getLoggedSession();
+  if (null === session){
+    onFail('session expired');
+    return;
+  }
+  var request = {
+    name: name,
+    description: description,
+    user: session.user,
+    group: session.group,
+    enabled: enabled,
+    global: isGlobal,
+    default_action: action,
+  };
+  const onOperateSuccess = ({id}) =>{
+    onSuccess(id);
+  }
+  postRequest(url, request, onOperateSuccess, onFail);
+}
+
+export function modifySecurityPolicyGroup(policyID, name, description, enabled, isGlobal,
+  action, onSuccess, onFail){
+  const url = '/security_policy_groups/' + policyID;
+  var session = getLoggedSession();
+  if (null === session){
+    onFail('session expired');
+    return;
+  }
+  var request = {
+    name: name,
+    description: description,
+    user: session.user,
+    group: session.group,
+    enabled: enabled,
+    global: isGlobal,
+    default_action: action,
+  };
+  const onOperateSuccess = () =>{
+    onSuccess(policyID);
+  }
+  putRequest(url, request, onOperateSuccess, onFail);
+}
+
+export function deleteSecurityPolicyGroup(policyID, onSuccess, onFail){
+  const url = '/security_policy_groups/' + policyID;
+  const onOperateSuccess = () => {
+    onSuccess(policyID);
+  }
+  deleteRequest(url, onOperateSuccess, onFail);
+}
+
+export function getSecurityPolicyRules(policyID, onSuccess, onFail){
+  const url = '/security_policy_groups/' + policyID + '/rules/';
+  getRequest(url, onSuccess, onFail);
+}
+
+export function addSecurityPolicyRule(policyID, action, protocol, to_port, onSuccess, onFail){
+  const url = '/security_policy_groups/' + policyID + '/rules/';
+  const request = {
+    action: action,
+    protocol: protocol,
+    to_port: to_port,
+  };
+  postRequest(url, request, onSuccess, onFail);
+}
+
+export function modifySecurityPolicyRule(policyID, index, action, protocol, to_port, onSuccess, onFail){
+  const url = '/security_policy_groups/' + policyID + '/rules/' + index;
+  const request = {
+    action: action,
+    protocol: protocol,
+    to_port: to_port,
+  };
+  const onOperateSuccess = () => {
+    onSuccess(policyID, index);
+  }
+  putRequest(url, request, onOperateSuccess, onFail);
+}
+
+export function removeSecurityPolicyRule(policyID, index, onSuccess, onFail){
+  const url = '/security_policy_groups/' + policyID + '/rules/' + index;
+  const onOperateSuccess = () => {
+    onSuccess(policyID, index);
+  }
+  deleteRequest(url, onOperateSuccess, onFail);
+}
+
+export function moveUpSecurityPolicyRule(policyID, index, onSuccess, onFail){
+  const url = '/security_policy_groups/' + policyID + '/rules/' + index + '/order';
+  const request = {
+    direction: 'up',
+  };
+  const onOperateSuccess = () => {
+    onSuccess(policyID, index);
+  }
+  putRequest(url, request, onOperateSuccess, onFail);
+}
+
+export function moveDownSecurityPolicyRule(policyID, index, onSuccess, onFail){
+  const url = '/security_policy_groups/' + policyID + '/rules/' + index + '/order';
+  const request = {
+    direction: 'down',
+  };
+  const onOperateSuccess = () => {
+    onSuccess(policyID, index);
+  }
+  putRequest(url, request, onOperateSuccess, onFail);
 }
 
 //roles
