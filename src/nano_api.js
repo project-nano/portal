@@ -790,7 +790,7 @@ export function modifyGuestSecurityRule(guestID, index, action, protocol, to_por
     to_port: to_port,
   };
   const onOperateSuccess = () =>{
-    onSuccess(guestID);
+    onSuccess(guestID, index);
   }
   putRequest(url, request, onOperateSuccess, onFail);
 }
@@ -798,7 +798,7 @@ export function modifyGuestSecurityRule(guestID, index, action, protocol, to_por
 export function removeGuestSecurityRule(guestID, index, onSuccess, onFail){
   const url = "/guests/" + guestID + "/security_policy/rules/" + index;
   const onOperateSuccess = () =>{
-    onSuccess(guestID);
+    onSuccess(guestID, index);
   }
   deleteRequest(url, onOperateSuccess, onFail);
 }
@@ -809,7 +809,7 @@ export function moveUpGuestSecurityRule(guestID, index, onSuccess, onFail){
     direction: "up",
   }
   const onOperateSuccess = () =>{
-    onSuccess(guestID);
+    onSuccess(guestID, index);
   }
   putRequest(url, request, onOperateSuccess, onFail);
 }
@@ -820,7 +820,7 @@ export function moveDownGuestSecurityRule(guestID, index, onSuccess, onFail){
     direction: "down",
   }
   const onOperateSuccess = () =>{
-    onSuccess(guestID);
+    onSuccess(guestID, index);
   }
   putRequest(url, request, onOperateSuccess, onFail);
 }
@@ -1184,20 +1184,24 @@ export function deleteSystemTemplate(templateID, onSuccess, onFail){
 
 //Security Policy Groups
 export function searchSecurityPolicyGroups(owner, group, enabledOnly, globalOnly, onSuccess, onFail){
-  let url = new URL('/search/security_policy_groups/');
+  let url = '/search/security_policy_groups/';
+  var params = new URLSearchParams();
   if (owner){
-    url.searchParams.append("owner", owner);
+    params.append("owner", owner);
   }
   if (group){
-    url.searchParams.append("group", group);
+    params.append("group", group);
   }
   if (enabledOnly){
-    url.searchParams.append("enabled_only", enabledOnly);
+    params.append("enabled_only", enabledOnly);
   }
   if (globalOnly){
-    url.searchParams.append("global_only", globalOnly);
+    params.append("global_only", globalOnly);
   }
-  getRequest(url.toString(), onSuccess, onFail);
+  if ('' !== params.toString()){
+    url += '?' + params.toString();
+  }
+  getRequest(url, onSuccess, onFail);
 }
 
 export function getSecurityPolicyGroup(policyID, onSuccess, onFail){

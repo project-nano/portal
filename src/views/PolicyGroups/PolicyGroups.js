@@ -7,8 +7,6 @@ import Divider from '@material-ui/core/Divider';
 import DeleteIcon from '@material-ui/icons/Delete';
 import SettingsIcon from '@material-ui/icons/Settings';
 import NavigateBeforeIcon from '@material-ui/icons/NavigateBefore';
-import ArrowDownwardIcon from '@material-ui/icons/ArrowDownward';
-import ArrowUpwardIcon from '@material-ui/icons/ArrowUpward';
 import Box from '@material-ui/core/Box';
 
 // dashboard components
@@ -22,11 +20,11 @@ import Snackbar from "components/Snackbar/Snackbar.js";
 import Button from "components/CustomButtons/Button.js";
 import Table from "components/Table/ObjectTable.js";
 import IconButton from "components/CustomButtons/IconButton.js";
-import RemoveDialog from "views/Instances/RemoveRuleDialog.js";
-import AddDialog from "views/Instances/AddRuleDialog.js";
-import ModifyDialog from "views/Instances/ModifyRuleDialog.js";
-import { getGuestSecurityPolicy, moveUpGuestSecurityRule,
-  moveDownGuestSecurityRule, writeLog } from "nano_api.js";
+import DeleteDialog from "views/SystemTemplates/DeleteDialog.js";
+import CreateDialog from "views/SystemTemplates/CreateDialog.js";
+import ModifyDialog from "views/SystemTemplates/ModifyDialog.js";
+import { getLoggedSession } from 'utils.js';
+import { searchSecurityPolicyGroups, writeLog } from "nano_api.js";
 
 const styles = {
   cardTitleWhite: {
@@ -50,64 +48,51 @@ const useStyles = makeStyles(styles);
 
 const i18n = {
   'en':{
-    createButton: "Add New Rule",
-    tableTitle: "Security Policy Rules",
-    rule: 'Rule',
-    action: 'Action',
-    protocol: 'Protocol',
-    sourceAddress: 'Source Address',
-    targetPort: 'Target Port',
-    default: 'Default Action',
-    accept: 'Accept',
-    reject: 'Reject',
+    createButton: "Create New Group",
+    tableTitle: "Security Policy Groups",
+    name: "Name",
+    os: "Operating System",
+    createdTime: "Created Time",
+    modifiedTime: "Last Modified",
     operates: "Operates",
     noResource: "No security policy available",
-    modify: 'Modify',
-    remove: 'Remove',
-    moveUp: 'Move Up',
-    moveDown: 'Move Down',
+    detail: "Detail",
+    delete: 'Delete',
     back: 'Back',
   },
   'cn':{
-    createButton: "添加新规则",
-    tableTitle: "安全规则",
-    rule: '规则',
-    action: '处理',
-    protocol: '协议',
-    sourceAddress: '来源地址',
-    targetPort: '目标端口',
-    default: '默认处理',
-    accept: '接收',
-    reject: '拒绝',
+    createButton: "创建新策略组",
+    tableTitle: "安全策略组",
+    name: "名称",
+    os: "操作系统",
+    createdTime: "创建时间",
+    modifiedTime: "最后修改",
     operates: "操作",
     noResource: "没有安全策略组",
-    modify: '修改',
-    remove: '移除',
-    moveUp: '上移',
-    moveDown: '下移',
+    detail: "详情",
+    delete: '删除',
     back: '返回',
   }
 }
 
-function dataToNodes(index, data, buttons){
+function dataToNodes(data, buttons){
   const operates = buttons.map((button, key) => (
     <IconButton label={button.label} icon={button.icon} onClick={button.onClick} key={key}/>
   ))
-  const { action, protocol, from_address, to_port } = data;
-  return [ index,  action, protocol, from_address, to_port, operates];
+  const { id, name, operating_system, created_time, modified_time } = data;
+  return [ id, name, operating_system, created_time, modified_time, operates];
 }
 
 export default function SystemTemplates(props){
-    const guestID = props.match.params.id;
     const { lang } = props;
     const texts = i18n[lang];
     const classes = useStyles();
     const [ mounted, setMounted ] = React.useState(false);
-    const [ data, setData ] = React.useState(null);
+    const [ dataList, setDataList ] = React.useState(null);
     //for dialog
-    const [ createDialogVisible, setAddDialogVisible ] = React.useState(false);
+    const [ createDialogVisible, setCreateDialogVisible ] = React.useState(false);
     const [ modifyDialogVisible, setModifyDialogVisible ] = React.useState(false);
-    const [ deleteDialogVisible, setRemoveDialogVisible ] = React.useState(false);
+    const [ deleteDialogVisible, setDeleteDialogVisible ] = React.useState(false);
     const [ selected, setSelected ] = React.useState('');
 
     const [ notifyColor, setNotifyColor ] = React.useState('warning');
@@ -131,8 +116,15 @@ export default function SystemTemplates(props){
       if (!mounted){
         return;
       }
-      getGuestSecurityPolicy(guestID, setData, showErrorMessage);
-    }, [guestID, showErrorMessage, mounted]);
+      var session = getLoggedSession();
+      if (null === session){
+        showErrorMessage('session expired');
+        return;
+      }
+
+      searchSecurityPolicyGroups(session.user, session.group, false, false,
+        setDataList, showErrorMessage);
+    }, [showErrorMessage, mounted]);
 
     const showNotifyMessage = msg => {
       if (!mounted){
@@ -146,68 +138,51 @@ export default function SystemTemplates(props){
     };
 
     //modify
-    const showModifyDialog = index =>{
+    const showModifyDialog = (poolName) =>{
       setModifyDialogVisible(true);
-      setSelected(index);
+      setSelected(poolName);
     }
 
     const closeModifyDialog = () =>{
       setModifyDialogVisible(false);
     }
 
-    const onModifySuccess = index =>{
+    const onModifySuccess = templateID =>{
       closeModifyDialog();
-      showNotifyMessage(index + 'th rule modified');
+      showNotifyMessage('template ' + templateID + ' modified');
       reloadAllData();
     };
 
     //delete
-    const showRemoveDialog = index =>{
-      setRemoveDialogVisible(true);
-      setSelected(index);
+    const showDeleteDialog = templateID =>{
+      setDeleteDialogVisible(true);
+      setSelected(templateID);
     }
 
-    const closeRemoveDialog = () =>{
-      setRemoveDialogVisible(false);
+    const closeDeleteDialog = () =>{
+      setDeleteDialogVisible(false);
     }
 
-    const onRemoveSuccess = index =>{
-      closeRemoveDialog();
-      showNotifyMessage(index + 'the rule removed');
+    const onDeleteSuccess = templateID =>{
+      closeDeleteDialog();
+      showNotifyMessage('template ' + templateID + ' deleted');
       reloadAllData();
     };
 
     //create
-    const showAddDialog = () =>{
-      setAddDialogVisible(true);
+    const showCreateDialog = () =>{
+      setCreateDialogVisible(true);
     };
 
-    const closeAddDialog = () =>{
-      setAddDialogVisible(false);
+    const closeCreateDialog = () =>{
+      setCreateDialogVisible(false);
     }
 
-    const onAddSuccess = templateID =>{
-      closeAddDialog();
-      showNotifyMessage('new security policy rule added');
+    const onCreateSuccess = templateID =>{
+      closeCreateDialog();
+      showNotifyMessage('new template ' + templateID + ' created');
       reloadAllData();
     };
-
-    //move rule
-    const moveUp = index =>{
-      const onMoveUpSuccess = (id, i) =>{
-        showNotifyMessage(i + 'th rule moved up');
-        reloadAllData();
-      }
-      moveUpGuestSecurityRule(guestID, index, onMoveUpSuccess, showErrorMessage);
-    }
-
-    const moveDown = index =>{
-      const onMoveDownSuccess = (id, i) =>{
-        showNotifyMessage(i + 'th rule moved down');
-        reloadAllData();
-      }
-      moveDownGuestSecurityRule(guestID, index, onMoveDownSuccess, showErrorMessage);
-    }
 
     React.useEffect(() =>{
       setMounted(true);
@@ -219,49 +194,31 @@ export default function SystemTemplates(props){
 
     //begin rendering
     let content;
-    if (null === data){
+    if (null === dataList){
       content = <Skeleton variant="rect" style={{height: '10rem'}}/>;
+    }else if (0 === dataList.length){
+      content = <Box display="flex" justifyContent="center"><Info>{texts.noResource}</Info></Box>;
     }else{
-      var rows = [[texts.default, data.default_action]];
-      if (0 === data.rules.length){
-        rows.push([<Box display="flex" justifyContent="center"><Info>{texts.noResource}</Info></Box>]);
-      }else{
-        data.rules.forEach( (rule, index) => {
-          var buttons = [
-            {
-              onClick: e => showModifyDialog(index),
-              icon: SettingsIcon,
-              label: texts.modify,
-            },
-            {
-              onClick: e => showRemoveDialog(index),
-              icon: DeleteIcon,
-              label: texts.remove,
-            },
-          ];
-          if (data.rules.length - 1 !== index){
-            buttons.push({
-              onClick: e => moveDown(index),
-              icon: ArrowDownwardIcon,
-              label: texts.moveDown,
-            });
-          }
-          if (0 !== index){
-            buttons.push({
-              onClick: e => moveUp(index),
-              icon: ArrowUpwardIcon,
-              label: texts.moveUp,
-            });
-          }
-
-          rows.push(dataToNodes(index, rule, buttons));
-        });
-      }
-
+      var rows = [];
+      dataList.forEach( data => {
+        const buttons = [
+          {
+            onClick: e => showModifyDialog(data.id),
+            icon: SettingsIcon,
+            label: texts.detail,
+          },
+          {
+            onClick: e => showDeleteDialog(data.id),
+            icon: DeleteIcon,
+            label: texts.delete,
+          },
+        ];
+        rows.push(dataToNodes(data, buttons));
+      });
       content = (
         <Table
           color="primary"
-          headers={[texts.rule, texts.action, texts.protocol, texts.sourceAddress, texts.targetPort, texts.operates]}
+          headers={["ID", texts.name, texts.os, texts.createdTime, texts.modifiedTime, texts.operates]}
           rows={rows}/>
       );
 
@@ -274,7 +231,7 @@ export default function SystemTemplates(props){
         label: texts.back,
       },
       {
-        onClick: showAddDialog,
+        onClick: showCreateDialog,
         icon: AddIcon,
         label: texts.createButton,
       },
@@ -334,11 +291,11 @@ export default function SystemTemplates(props){
           closeNotification={closeNotify}
           close
         />
-        <AddDialog
+        <CreateDialog
           lang={lang}
           open={createDialogVisible}
-          onSuccess={onAddSuccess}
-          onCancel={closeAddDialog}
+          onSuccess={onCreateSuccess}
+          onCancel={closeCreateDialog}
           />
         <ModifyDialog
           lang={lang}
@@ -347,12 +304,12 @@ export default function SystemTemplates(props){
           onSuccess={onModifySuccess}
           onCancel={closeModifyDialog}
           />
-        <RemoveDialog
+        <DeleteDialog
           lang={lang}
           open={deleteDialogVisible}
           templateID={selected}
-          onSuccess={onRemoveSuccess}
-          onCancel={closeRemoveDialog}
+          onSuccess={onDeleteSuccess}
+          onCancel={closeDeleteDialog}
           />
       </GridContainer>
     );

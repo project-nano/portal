@@ -5,6 +5,7 @@
 ### Added
 
 - Synchronize disk/media images from local storage
+- Guest policy rule management
 
 ### Fixed
 
