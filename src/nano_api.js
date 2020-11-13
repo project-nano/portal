@@ -1,8 +1,8 @@
 import axios from "axios";
 import { getLoggedSession } from 'utils.js';
 
-// const apiRoot = 'http://192.168.3.224:5870/api/v1';
-const apiRoot = 'http://192.168.3.26:5870/api/v1';
+const apiRoot = 'http://192.168.3.224:5870/api/v1';
+// const apiRoot = 'http://192.168.3.26:5870/api/v1';
 // const apiRoot = 'http://192.168.1.111:5870/api/v1';
 // const apiRoot = 'http://192.168.1.64:5870/api/v1';
 // const apiRoot = '/api/v1';

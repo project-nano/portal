@@ -5,7 +5,7 @@ import Skeleton from '@material-ui/lab/Skeleton';
 import AddIcon from '@material-ui/icons/Add';
 import Divider from '@material-ui/core/Divider';
 import DeleteIcon from '@material-ui/icons/Delete';
-import SettingsIcon from '@material-ui/icons/Settings';
+import BuildIcon from '@material-ui/icons/Build';
 import NavigateBeforeIcon from '@material-ui/icons/NavigateBefore';
 import ArrowDownwardIcon from '@material-ui/icons/ArrowDownward';
 import ArrowUpwardIcon from '@material-ui/icons/ArrowUpward';
@@ -77,7 +77,7 @@ const i18n = {
     sourceAddress: '来源地址',
     targetPort: '目标端口',
     default: '默认处理',
-    accept: '接收',
+    accept: '接受',
     reject: '拒绝',
     operates: "操作",
     noResource: "没有安全策略组",
@@ -105,9 +105,9 @@ export default function SystemTemplates(props){
     const [ mounted, setMounted ] = React.useState(false);
     const [ data, setData ] = React.useState(null);
     //for dialog
-    const [ createDialogVisible, setAddDialogVisible ] = React.useState(false);
+    const [ addDialogVisible, setAddDialogVisible ] = React.useState(false);
     const [ modifyDialogVisible, setModifyDialogVisible ] = React.useState(false);
-    const [ deleteDialogVisible, setRemoveDialogVisible ] = React.useState(false);
+    const [ remoeDialogVisible, setRemoveDialogVisible ] = React.useState(false);
     const [ selected, setSelected ] = React.useState('');
 
     const [ notifyColor, setNotifyColor ] = React.useState('warning');
@@ -146,9 +146,9 @@ export default function SystemTemplates(props){
     };
 
     //modify
-    const showModifyDialog = index =>{
+    const showModifyDialog = rule =>{
       setModifyDialogVisible(true);
-      setSelected(index);
+      setSelected(rule);
     }
 
     const closeModifyDialog = () =>{
@@ -162,16 +162,16 @@ export default function SystemTemplates(props){
     };
 
     //delete
-    const showRemoveDialog = index =>{
+    const showRemoveDialog = rule =>{
       setRemoveDialogVisible(true);
-      setSelected(index);
+      setSelected(rule);
     }
 
     const closeRemoveDialog = () =>{
       setRemoveDialogVisible(false);
     }
 
-    const onRemoveSuccess = index =>{
+    const onRemoveSuccess = (id, index) =>{
       closeRemoveDialog();
       showNotifyMessage(index + 'the rule removed');
       reloadAllData();
@@ -186,27 +186,27 @@ export default function SystemTemplates(props){
       setAddDialogVisible(false);
     }
 
-    const onAddSuccess = templateID =>{
+    const onAddSuccess = () =>{
       closeAddDialog();
       showNotifyMessage('new security policy rule added');
       reloadAllData();
     };
 
     //move rule
-    const moveUp = index =>{
+    const moveUp = rule =>{
       const onMoveUpSuccess = (id, i) =>{
         showNotifyMessage(i + 'th rule moved up');
         reloadAllData();
       }
-      moveUpGuestSecurityRule(guestID, index, onMoveUpSuccess, showErrorMessage);
+      moveUpGuestSecurityRule(guestID, rule.index, onMoveUpSuccess, showErrorMessage);
     }
 
-    const moveDown = index =>{
+    const moveDown = rule =>{
       const onMoveDownSuccess = (id, i) =>{
         showNotifyMessage(i + 'th rule moved down');
         reloadAllData();
       }
-      moveDownGuestSecurityRule(guestID, index, onMoveDownSuccess, showErrorMessage);
+      moveDownGuestSecurityRule(guestID, rule.index, onMoveDownSuccess, showErrorMessage);
     }
 
     React.useEffect(() =>{
@@ -227,28 +227,34 @@ export default function SystemTemplates(props){
         rows.push([<Box display="flex" justifyContent="center"><Info>{texts.noResource}</Info></Box>]);
       }else{
         data.rules.forEach( (rule, index) => {
+          var item = {
+            index: index,
+            action: rule.action,
+            protocol: rule.protocol,
+            to_port: rule.to_port,
+          }
           var buttons = [
             {
-              onClick: e => showModifyDialog(index),
-              icon: SettingsIcon,
+              onClick: e => showModifyDialog(item),
+              icon: BuildIcon,
               label: texts.modify,
             },
             {
-              onClick: e => showRemoveDialog(index),
+              onClick: e => showRemoveDialog(item),
               icon: DeleteIcon,
               label: texts.remove,
             },
           ];
           if (data.rules.length - 1 !== index){
             buttons.push({
-              onClick: e => moveDown(index),
+              onClick: e => moveDown(item),
               icon: ArrowDownwardIcon,
               label: texts.moveDown,
             });
           }
           if (0 !== index){
             buttons.push({
-              onClick: e => moveUp(index),
+              onClick: e => moveUp(item),
               icon: ArrowUpwardIcon,
               label: texts.moveUp,
             });
@@ -336,21 +342,24 @@ export default function SystemTemplates(props){
         />
         <AddDialog
           lang={lang}
-          open={createDialogVisible}
+          open={addDialogVisible}
+          guestID={guestID}
           onSuccess={onAddSuccess}
           onCancel={closeAddDialog}
           />
         <ModifyDialog
           lang={lang}
           open={modifyDialogVisible}
-          templateID={selected}
+          guestID={guestID}
+          rule={selected}
           onSuccess={onModifySuccess}
           onCancel={closeModifyDialog}
           />
         <RemoveDialog
           lang={lang}
-          open={deleteDialogVisible}
-          templateID={selected}
+          open={remoeDialogVisible}
+          guestID={guestID}
+          index={selected.index}
           onSuccess={onRemoveSuccess}
           onCancel={closeRemoveDialog}
           />

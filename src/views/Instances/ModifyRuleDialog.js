@@ -1,49 +1,83 @@
 import React from "react";
+import Skeleton from '@material-ui/lab/Skeleton';
 import InputList from "components/CustomInput/InputList";
 import CustomDialog from "components/Dialog/CustomDialog.js";
-import { createNetworkPool } from 'nano_api.js';
+import { modifyGuestSecurityRule } from 'nano_api.js';
 
 const i18n = {
   'en':{
-    title: 'Create Network Pool',
-    name: "Name",
-    gateway: "Gateway",
-    dns1: "DNS1",
-    dns2: "DNS2",
+    title: 'Modify Security Policy Rule',
+    action: 'Action',
+    accept: 'Accept',
+    reject: 'Reject',
+    protocol: 'Protocol',
+    sourceModifyress: 'Source Address',
+    targetPort: 'Target Port',
     cancel: 'Cancel',
     confirm: 'Confirm',
   },
   'cn':{
-    title: '创建地址资源池',
-    name: "名称",
-    gateway: "网关地址",
-    dns1: "主DNS",
-    dns2: "副DNS",
+    title: '修改安全规则',
+    action: '处理',
+    accept: '接受',
+    reject: '拒绝',
+    protocol: '协议',
+    sourceModifyress: '来源地址',
+    targetPort: '目标端口',
     cancel: '取消',
     confirm: '确定',
   },
 }
 
-export default function CreateDialog(props){
+export default function ModifyRuleDialog(props){
+  const { lang, guestID, rule, open, onSuccess, onCancel } = props;
+  const protocolOptions = [
+    {
+      label: 'TCP',
+      value: 'tcp',
+    },
+    {
+      label: 'UDP',
+      value: 'udp',
+    },
+    {
+      label: 'ICMP',
+      value: 'icmp',
+    }];
   const defaultValues = {
-    name: '',
-    gateway: '',
-    dns1: '',
-    dns2: '',
+    action: rule.action,
+    protocol: rule.protocol,
+    port: rule.to_port,
   };
-  const { lang, open, onSuccess, onCancel } = props;
   const [ operatable, setOperatable ] = React.useState(true);
   const [ prompt, setPrompt ] = React.useState('');
+  const [ mounted, setMounted ] = React.useState(false);
+  const [ initialed, setInitialed ] = React.useState(false);
   const [ request, setRequest ] = React.useState(defaultValues);
   const texts = i18n[lang];
   const title = texts.title;
-  const onCreateFail = msg =>{
+  const actionOptions = [
+    {
+      label: texts.accept,
+      value: 'accept',
+    },
+    {
+      label: texts.reject,
+      value: 'reject',
+    },
+  ];
+  const onModifyFail = React.useCallback(msg =>{
+    if(!mounted){
+      return;
+    }
     setOperatable(true);
     setPrompt(msg);
-  }
+  }, [mounted]);
+
   const resetDialog = () =>{
     setPrompt('');
     setRequest(defaultValues);
+    setInitialed(false);
   };
 
   const closeDialog = ()=>{
@@ -51,46 +85,34 @@ export default function CreateDialog(props){
     onCancel();
   }
 
-  const onCreateSuccess = poolName =>{
+  const onModifySuccess = id =>{
     setOperatable(true);
     resetDialog();
-    onSuccess(poolName);
+    onSuccess(id);
   }
 
-  const handleCreate = () =>{
+  const handleModify = () =>{
     setOperatable(false);
-    const ipv4Pattern = new RegExp('^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?).){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$');
 
-    if(!request.name){
-      onCreateFail('must specify pool name');
+    if(!request.action){
+      onModifyFail('must specify action');
       return;
     }
-    if(!request.gateway){
-      onCreateFail('must specify gateway');
-      return;
-    }else if (!ipv4Pattern.test(request.gateway)){
-      onCreateFail('invalid gateway format');
+    if(!request.protocol){
+      onModifyFail('must specify protocol');
       return;
     }
-
-    if(!request.dns1){
-      onCreateFail('must specify primary DNS');
+    if(!request.port){
+      onModifyFail('must specify target port');
       return;
-    }else if (!ipv4Pattern.test(request.dns1)){
-      onCreateFail('invalid primary DNS format');
+    }
+    var targetPort = Number.parseInt(request.port);
+    if(Number.isNaN(targetPort)){
+      onModifyFail('invalid target port: ' + request.port);
       return;
     }
 
-    var dnsList = [request.dns1];
-    if(request.dns2){
-      if (!ipv4Pattern.test(request.dns2)){
-        onCreateFail('invalid secondary DNS format');
-        return;
-      }
-      dnsList.push(request.dns2);
-    }
-
-    createNetworkPool(request.name, request.gateway, dnsList, onCreateSuccess, onCreateFail);
+    modifyGuestSecurityRule(guestID, rule.index, request.action, request.protocol, targetPort, onModifySuccess, onModifyFail);
   }
 
   const handleRequestPropsChanged = name => e =>{
@@ -101,67 +123,80 @@ export default function CreateDialog(props){
     }));
   };
 
+
+    React.useEffect(()=>{
+      if (!guestID || !rule ){
+        return;
+      }
+
+      setMounted(true);
+      setRequest({
+        action: rule.action,
+        protocol: rule.protocol,
+        port: rule.to_port,
+      })
+      setInitialed(true);
+      return () => {
+        setMounted(false);
+      }
+    }, [mounted, open, guestID, rule, onModifyFail]);
+
+
   //begin render
-  const inputs = [
-    {
-      type: "text",
-      label: texts.name,
-      onChange: handleRequestPropsChanged('name'),
-      value: request.name,
-      required: true,
-      oneRow: true,
-      xs: 12,
-      sm: 6,
-      md: 4,
-    },
-    {
-      type: "text",
-      label: texts.gateway,
-      onChange: handleRequestPropsChanged('gateway'),
-      value: request.gateway,
-      required: true,
-      oneRow: true,
-      xs: 12,
-      sm: 10,
-      md: 8,
-    },
-    {
-      type: "text",
-      label: texts.dns1,
-      onChange: handleRequestPropsChanged('dns1'),
-      value: request.dns1,
-      required: true,
-      oneRow: true,
-      xs: 12,
-      sm: 10,
-      md: 8,
-    },
-    {
-      type: "text",
-      label: texts.dns2,
-      onChange: handleRequestPropsChanged('dns2'),
-      value: request.dns2,
-      oneRow: true,
-      xs: 12,
-      sm: 10,
-      md: 8,
-    },
-  ];
+  var buttons = [{
+    color: 'transparent',
+    label: texts.cancel,
+    onClick: closeDialog,
+  }];
+  let content;
+  if (!initialed){
+    content = <Skeleton variant="rect" style={{height: '10rem'}}/>;
+  }else{
+    const inputs = [
+      {
+        type: "radio",
+        label: texts.action,
+        onChange: handleRequestPropsChanged('action'),
+        value: request.action,
+        options: actionOptions,
+        required: true,
+        oneRow: true,
+        xs: 10,
+        sm: 8,
+        md: 6,
+      },
+      {
+        type: "select",
+        label: texts.protocol,
+        onChange: handleRequestPropsChanged('protocol'),
+        value: request.protocol,
+        options: protocolOptions,
+        required: true,
+        oneRow: true,
+        xs: 8,
+        sm: 6,
+        md: 4,
+      },
+      {
+        type: "text",
+        label: texts.targetPort,
+        onChange: handleRequestPropsChanged('port'),
+        value: request.port,
+        required: true,
+        oneRow: true,
+        xs: 8,
+        sm: 6,
+        md: 4,
+      },
+    ];
 
-  const content = <InputList inputs={inputs}/>
-
-  const buttons = [
-    {
-      color: 'transparent',
-      label: texts.cancel,
-      onClick: closeDialog,
-    },
-    {
-      color: 'info',
-      label: texts.confirm,
-      onClick: handleCreate,
-    },
-  ];
+    content = <InputList inputs={inputs}/>
+    buttons.push({
+        color: 'info',
+        label: texts.confirm,
+        onClick: handleModify,
+      });
+  }
 
   return <CustomDialog size='sm' open={open} prompt={prompt}
     title={title}  buttons={buttons} content={content} operatable={operatable}/>;
