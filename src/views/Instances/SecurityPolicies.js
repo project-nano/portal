@@ -6,10 +6,18 @@ import AddIcon from '@material-ui/icons/Add';
 import Divider from '@material-ui/core/Divider';
 import DeleteIcon from '@material-ui/icons/Delete';
 import BuildIcon from '@material-ui/icons/Build';
+import CheckIcon from '@material-ui/icons/Check';
+import BlockIcon from '@material-ui/icons/Block';
 import NavigateBeforeIcon from '@material-ui/icons/NavigateBefore';
 import ArrowDownwardIcon from '@material-ui/icons/ArrowDownward';
 import ArrowUpwardIcon from '@material-ui/icons/ArrowUpward';
 import Box from '@material-ui/core/Box';
+import Tooltip from "@material-ui/core/Tooltip";
+import Radio from '@material-ui/core/Radio';
+import RadioGroup from '@material-ui/core/RadioGroup';
+import FormControlLabel from '@material-ui/core/FormControlLabel';
+import FormControl from '@material-ui/core/FormControl';
+import FormLabel from '@material-ui/core/FormLabel';
 
 // dashboard components
 import GridItem from "components/Grid/GridItem.js";
@@ -25,10 +33,12 @@ import IconButton from "components/CustomButtons/IconButton.js";
 import RemoveDialog from "views/Instances/RemoveRuleDialog.js";
 import AddDialog from "views/Instances/AddRuleDialog.js";
 import ModifyDialog from "views/Instances/ModifyRuleDialog.js";
+import fontStyles from "assets/jss/material-dashboard-react/components/typographyStyle.js";
 import { getGuestSecurityPolicy, moveUpGuestSecurityRule,
-  moveDownGuestSecurityRule, writeLog } from "nano_api.js";
+  moveDownGuestSecurityRule, changeGuestSecurityPolicyAction, writeLog } from "nano_api.js";
 
 const styles = {
+  ...fontStyles,
   cardTitleWhite: {
     color: "#FFFFFF",
     marginTop: "0px",
@@ -87,14 +97,6 @@ const i18n = {
     moveDown: '下移',
     back: '返回',
   }
-}
-
-function dataToNodes(index, data, buttons){
-  const operates = buttons.map((button, key) => (
-    <IconButton label={button.label} icon={button.icon} onClick={button.onClick} key={key}/>
-  ))
-  const { action, protocol, from_address, to_port } = data;
-  return [ index,  action, protocol, from_address, to_port, operates];
 }
 
 export default function SystemTemplates(props){
@@ -209,6 +211,15 @@ export default function SystemTemplates(props){
       moveDownGuestSecurityRule(guestID, rule.index, onMoveDownSuccess, showErrorMessage);
     }
 
+    const changeDefaultAction = e =>{
+      var action = e.target.value
+      const onChangeSuccess = () =>{
+        showNotifyMessage('default action changed to ' + action);
+        reloadAllData();
+      }
+      changeGuestSecurityPolicyAction(guestID, action, onChangeSuccess, showErrorMessage);
+    }
+
     React.useEffect(() =>{
       setMounted(true);
       reloadAllData();
@@ -217,12 +228,42 @@ export default function SystemTemplates(props){
       }
     }, [reloadAllData]);
 
+    function dataToNodes(index, data, buttons){
+      const operates = buttons.map((button, key) => (
+        <IconButton label={button.label} icon={button.icon} onClick={button.onClick} key={key}/>
+      ))
+      const { action, protocol, from_address, to_port } = data;
+      let actionIcon;
+      if ('accept' === action){
+        actionIcon = (
+          <Tooltip title={texts.accept} placement="top">
+            <CheckIcon className={classes.successText}/>
+          </Tooltip>);
+      }else{
+        actionIcon = (
+          <Tooltip title={texts.reject} placement="top">
+            <BlockIcon className={classes.dangerText}/>
+          </Tooltip>);
+      }
+      return [ index, actionIcon, protocol, from_address, to_port, operates];
+    }
+
     //begin rendering
     let content;
     if (null === data){
       content = <Skeleton variant="rect" style={{height: '10rem'}}/>;
     }else{
-      var rows = [[texts.default, data.default_action]];
+      var defaultAction = (
+        <FormControl component="fieldset" fullWidth>
+          <RadioGroup name="type" value={data.default_action} onChange={changeDefaultAction} row>
+            <Box display='flex' alignItems='center'>
+              <Box><FormControlLabel value='accept' control={<Radio />} label={texts.accept}/></Box>
+              <Box><FormControlLabel value='reject' control={<Radio />} label={texts.reject}/></Box>
+            </Box>
+          </RadioGroup>
+        </FormControl>
+      )
+      var rows = [[texts.default, defaultAction]];
       if (0 === data.rules.length){
         rows.push([<Box display="flex" justifyContent="center"><Info>{texts.noResource}</Info></Box>]);
       }else{

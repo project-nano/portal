@@ -38,10 +38,6 @@ export default function AddRuleDialog(props){
     {
       label: 'UDP',
       value: 'udp',
-    },
-    {
-      label: 'ICMP',
-      value: 'icmp',
     }];
   const defaultValues = {
     action: 'accept',

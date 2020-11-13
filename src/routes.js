@@ -26,6 +26,7 @@ import SystemTemplates from 'views/SystemTemplates/SystemTemplates.js';
 import Instances from 'views/Instances/Instances.js';
 import Users from 'views/Users/Main';
 import Visibilities from 'views/Visibilities/Visibilities';
+import PolicyGroups from 'views/PolicyGroups/PolicyGroups';
 import Logs from 'views/Logs/Logs';
 
 import MultilineChartIcon from '@material-ui/icons/MultilineChart';
@@ -39,6 +40,7 @@ import PeopleIcon from '@material-ui/icons/People';
 import BorderColorIcon from '@material-ui/icons/BorderColor';
 import VisibilityIcon from '@material-ui/icons/Visibility';
 import TuneIcon from '@material-ui/icons/Tune';
+import SecurityIcon from '@material-ui/icons/Security';
 
 const dashboardRoutes = [
   {
@@ -127,6 +129,17 @@ const dashboardRoutes = [
     },
     icon: TuneIcon,
     component: SystemTemplates,
+    layout: "/admin"
+  },
+  {
+    path: "/security_policies",
+    name: "policies",
+    display: {
+      'cn': '安全策略组',
+      'en': 'Security Policies',
+    },
+    icon: SecurityIcon,
+    component: PolicyGroups,
     layout: "/admin"
   },
   {
