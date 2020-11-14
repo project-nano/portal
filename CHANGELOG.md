@@ -1,11 +1,12 @@
 # Change Log
 
-## [1.3.0] - 2020-11-11
+## [1.3.0] - 2020-11-14
 
 ### Added
 
 - Synchronize disk/media images from local storage
 - Guest policy rule management
+- Security policies management
 
 ### Fixed
 

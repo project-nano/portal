@@ -13,10 +13,6 @@ import ArrowDownwardIcon from '@material-ui/icons/ArrowDownward';
 import ArrowUpwardIcon from '@material-ui/icons/ArrowUpward';
 import Box from '@material-ui/core/Box';
 import Tooltip from "@material-ui/core/Tooltip";
-import Radio from '@material-ui/core/Radio';
-import RadioGroup from '@material-ui/core/RadioGroup';
-import FormControlLabel from '@material-ui/core/FormControlLabel';
-import FormControl from '@material-ui/core/FormControl';
 
 // dashboard components
 import GridItem from "components/Grid/GridItem.js";
@@ -29,12 +25,12 @@ import Snackbar from "components/Snackbar/Snackbar.js";
 import Button from "components/CustomButtons/Button.js";
 import Table from "components/Table/ObjectTable.js";
 import IconButton from "components/CustomButtons/IconButton.js";
-import RemoveDialog from "views/Instances/RemoveRuleDialog.js";
-import AddDialog from "views/Instances/AddRuleDialog.js";
-import ModifyDialog from "views/Instances/ModifyRuleDialog.js";
+import RemoveDialog from "views/PolicyGroups/RemoveRuleDialog.js";
+import AddDialog from "views/PolicyGroups/AddRuleDialog.js";
+import ModifyDialog from "views/PolicyGroups/ModifyRuleDialog.js";
 import fontStyles from "assets/jss/material-dashboard-react/components/typographyStyle.js";
-import { getGuestSecurityPolicy, moveUpGuestSecurityRule,
-  moveDownGuestSecurityRule, changeGuestSecurityPolicyAction, writeLog } from "nano_api.js";
+import { getSecurityPolicyRules, moveUpSecurityPolicyRule,
+  moveDownSecurityPolicyRule, writeLog } from "nano_api.js";
 
 const styles = {
   ...fontStyles,
@@ -66,7 +62,6 @@ const i18n = {
     protocol: 'Protocol',
     sourceAddress: 'Source Address',
     targetPort: 'Target Port',
-    default: 'Default Action',
     accept: 'Accept',
     reject: 'Reject',
     operates: "Operates",
@@ -85,7 +80,6 @@ const i18n = {
     protocol: '协议',
     sourceAddress: '来源地址',
     targetPort: '目标端口',
-    default: '默认处理',
     accept: '接受',
     reject: '拒绝',
     operates: "操作",
@@ -99,12 +93,12 @@ const i18n = {
 }
 
 export default function SystemTemplates(props){
-    const guestID = props.match.params.id;
+    const policyID = props.match.params.id;
     const { lang } = props;
     const texts = i18n[lang];
     const classes = useStyles();
     const [ mounted, setMounted ] = React.useState(false);
-    const [ data, setData ] = React.useState(null);
+    const [ datalist, setDatalist ] = React.useState(null);
     //for dialog
     const [ addDialogVisible, setAddDialogVisible ] = React.useState(false);
     const [ modifyDialogVisible, setModifyDialogVisible ] = React.useState(false);
@@ -132,8 +126,8 @@ export default function SystemTemplates(props){
       if (!mounted){
         return;
       }
-      getGuestSecurityPolicy(guestID, setData, showErrorMessage);
-    }, [guestID, showErrorMessage, mounted]);
+      getSecurityPolicyRules(policyID, setDatalist, showErrorMessage);
+    }, [policyID, showErrorMessage, mounted]);
 
     const showNotifyMessage = msg => {
       if (!mounted){
@@ -199,7 +193,7 @@ export default function SystemTemplates(props){
         showNotifyMessage(i + 'th rule moved up');
         reloadAllData();
       }
-      moveUpGuestSecurityRule(guestID, rule.index, onMoveUpSuccess, showErrorMessage);
+      moveUpSecurityPolicyRule(policyID, rule.index, onMoveUpSuccess, showErrorMessage);
     }
 
     const moveDown = rule =>{
@@ -207,16 +201,7 @@ export default function SystemTemplates(props){
         showNotifyMessage(i + 'th rule moved down');
         reloadAllData();
       }
-      moveDownGuestSecurityRule(guestID, rule.index, onMoveDownSuccess, showErrorMessage);
-    }
-
-    const changeDefaultAction = e =>{
-      var action = e.target.value
-      const onChangeSuccess = () =>{
-        showNotifyMessage('default action changed to ' + action);
-        reloadAllData();
-      }
-      changeGuestSecurityPolicyAction(guestID, action, onChangeSuccess, showErrorMessage);
+      moveDownSecurityPolicyRule(policyID, rule.index, onMoveDownSuccess, showErrorMessage);
     }
 
     React.useEffect(() =>{
@@ -227,11 +212,11 @@ export default function SystemTemplates(props){
       }
     }, [reloadAllData]);
 
-    function dataToNodes(index, data, buttons){
+    function dataToNodes(index, datalist, buttons){
       const operates = buttons.map((button, key) => (
         <IconButton label={button.label} icon={button.icon} onClick={button.onClick} key={key}/>
       ))
-      const { action, protocol, from_address, to_port } = data;
+      const { action, protocol, from_address, to_port } = datalist;
       let actionIcon;
       if ('accept' === action){
         actionIcon = (
@@ -249,60 +234,48 @@ export default function SystemTemplates(props){
 
     //begin rendering
     let content;
-    if (null === data){
+    if (null === datalist){
       content = <Skeleton variant="rect" style={{height: '10rem'}}/>;
+    }else if (0 === datalist.length){
+      content = <Box display="flex" justifyContent="center"><Info>{texts.noResource}</Info></Box>;
     }else{
-      var defaultAction = (
-        <FormControl component="fieldset" fullWidth>
-          <RadioGroup name="type" value={data.default_action} onChange={changeDefaultAction} row>
-            <Box display='flex' alignItems='center'>
-              <Box><FormControlLabel value='accept' control={<Radio />} label={texts.accept}/></Box>
-              <Box><FormControlLabel value='reject' control={<Radio />} label={texts.reject}/></Box>
-            </Box>
-          </RadioGroup>
-        </FormControl>
-      )
-      var rows = [[texts.default, defaultAction]];
-      if (!data.rules || 0 === data.rules.length){
-        rows.push([<Box display="flex" justifyContent="center"><Info>{texts.noResource}</Info></Box>]);
-      }else{
-        data.rules.forEach( (rule, index) => {
-          var item = {
-            index: index,
-            action: rule.action,
-            protocol: rule.protocol,
-            to_port: rule.to_port,
-          }
-          var buttons = [
-            {
-              onClick: e => showModifyDialog(item),
-              icon: BuildIcon,
-              label: texts.modify,
-            },
-            {
-              onClick: e => showRemoveDialog(item),
-              icon: DeleteIcon,
-              label: texts.remove,
-            },
-          ];
-          if (data.rules.length - 1 !== index){
-            buttons.push({
-              onClick: e => moveDown(item),
-              icon: ArrowDownwardIcon,
-              label: texts.moveDown,
-            });
-          }
-          if (0 !== index){
-            buttons.push({
-              onClick: e => moveUp(item),
-              icon: ArrowUpwardIcon,
-              label: texts.moveUp,
-            });
-          }
+      var rows = [];
+      datalist.forEach( (rule, index) => {
+        var item = {
+          index: index,
+          action: rule.action,
+          protocol: rule.protocol,
+          to_port: rule.to_port,
+        }
+        var buttons = [
+          {
+            onClick: e => showModifyDialog(item),
+            icon: BuildIcon,
+            label: texts.modify,
+          },
+          {
+            onClick: e => showRemoveDialog(item),
+            icon: DeleteIcon,
+            label: texts.remove,
+          },
+        ];
+        if (datalist.length - 1 !== index){
+          buttons.push({
+            onClick: e => moveDown(item),
+            icon: ArrowDownwardIcon,
+            label: texts.moveDown,
+          });
+        }
+        if (0 !== index){
+          buttons.push({
+            onClick: e => moveUp(item),
+            icon: ArrowUpwardIcon,
+            label: texts.moveUp,
+          });
+        }
 
-          rows.push(dataToNodes(index, rule, buttons));
-        });
-      }
+        rows.push(dataToNodes(index, rule, buttons));
+      });
 
       content = (
         <Table
@@ -315,7 +288,7 @@ export default function SystemTemplates(props){
 
     var buttonProps = [
       {
-        href: '/admin/instances/',
+        href: '/admin/security_policies/',
         icon: NavigateBeforeIcon,
         label: texts.back,
       },
@@ -333,12 +306,12 @@ export default function SystemTemplates(props){
           <Divider/>
           </Box>
         </GridItem>
-        <GridItem xs={12} sm={12} md={12}>
+        <GridItem xs={12}>
           <GridContainer>
             <GridItem xs={12} sm={6} md={4}>
               <Box display="flex">
               {
-                buttonProps.map((p,key) => {
+                buttonProps.map( (p, key) => {
                   if (p.href){
                     return (
                       <Box p={1} key={key}>
@@ -362,7 +335,7 @@ export default function SystemTemplates(props){
             </GridItem>
           </GridContainer>
         </GridItem>
-        <GridItem xs={12} sm={12} md={12}>
+        <GridItem xs={12}>
           <Card>
             <CardHeader color="primary">
               <h4 className={classes.cardTitleWhite}>{texts.tableTitle}</h4>
@@ -383,14 +356,14 @@ export default function SystemTemplates(props){
         <AddDialog
           lang={lang}
           open={addDialogVisible}
-          guestID={guestID}
+          policyID={policyID}
           onSuccess={onAddSuccess}
           onCancel={closeAddDialog}
           />
         <ModifyDialog
           lang={lang}
           open={modifyDialogVisible}
-          guestID={guestID}
+          policyID={policyID}
           rule={selected}
           onSuccess={onModifySuccess}
           onCancel={closeModifyDialog}
@@ -398,7 +371,7 @@ export default function SystemTemplates(props){
         <RemoveDialog
           lang={lang}
           open={remoeDialogVisible}
-          guestID={guestID}
+          policyID={policyID}
           index={selected.index}
           onSuccess={onRemoveSuccess}
           onCancel={closeRemoveDialog}

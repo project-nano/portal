@@ -1,31 +1,29 @@
 import React from "react";
 import CustomDialog from "components/Dialog/CustomDialog.js";
-import { removeGuestSecurityRule } from 'nano_api.js';
+import { deleteSecurityPolicyGroup } from 'nano_api.js';
 
 const i18n = {
   'en':{
-    title: 'Remove Security Policy Rule',
-    content: 'Are you sure to remove ',
-    content2: 'th rule',
+    title: 'Delete Security Policy',
+    content: 'Are you sure to delete security policy ',
     cancel: 'Cancel',
     confirm: 'Confirm',
   },
   'cn':{
-    title: '删除安全规则',
-    content: '是否删除第 ',
-    content2: '个安全规则',
+    title: '删除安全策略',
+    content: '是否删除安全策略 ',
     cancel: '取消',
     confirm: '确定',
   },
 }
 
-export default function RemoveDialog(props){
-  const { lang, open, guestID, index, onSuccess, onCancel } = props;
+export default function DeletePolicyDialog(props){
+  const { lang, policyID, open, onSuccess, onCancel } = props;
   const [ operatable, setOperatable ] = React.useState(true);
   const [ prompt, setPrompt ] = React.useState('');
   const texts = i18n[lang];
   const title = texts.title;
-  const onRemoveFail = msg =>{
+  const onDeleteFail = msg =>{
     setOperatable(true);
     setPrompt(msg);
   }
@@ -35,18 +33,18 @@ export default function RemoveDialog(props){
     onCancel();
   }
 
-  const onRemoveSuccess = () =>{
+  const onDeleteSuccess = () =>{
     setOperatable(true);
     setPrompt('');
-    onSuccess(guestID, index);
+    onSuccess(policyID);
   }
 
-  const handleRemove = () =>{
+  const handleDelete = () =>{
     setOperatable(false);
-    removeGuestSecurityRule(guestID, index, onRemoveSuccess, onRemoveFail);
+    deleteSecurityPolicyGroup(policyID, onDeleteSuccess, onDeleteFail);
   }
 
-  const content = texts.content + (index + 1) + texts.content2;
+  const content = texts.content + policyID;
   const buttons = [
     {
       color: 'transparent',
@@ -56,7 +54,7 @@ export default function RemoveDialog(props){
     {
       color: 'info',
       label:  texts.confirm,
-      onClick: handleRemove,
+      onClick: handleDelete,
     },
   ];
 

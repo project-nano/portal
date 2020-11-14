@@ -1,6 +1,6 @@
 import React from "react";
 import CustomDialog from "components/Dialog/CustomDialog.js";
-import { removeGuestSecurityRule } from 'nano_api.js';
+import { removeSecurityPolicyRule } from 'nano_api.js';
 
 const i18n = {
   'en':{
@@ -20,7 +20,7 @@ const i18n = {
 }
 
 export default function RemoveDialog(props){
-  const { lang, open, guestID, index, onSuccess, onCancel } = props;
+  const { lang, open, policyID, index, onSuccess, onCancel } = props;
   const [ operatable, setOperatable ] = React.useState(true);
   const [ prompt, setPrompt ] = React.useState('');
   const texts = i18n[lang];
@@ -38,12 +38,12 @@ export default function RemoveDialog(props){
   const onRemoveSuccess = () =>{
     setOperatable(true);
     setPrompt('');
-    onSuccess(guestID, index);
+    onSuccess(policyID, index);
   }
 
   const handleRemove = () =>{
     setOperatable(false);
-    removeGuestSecurityRule(guestID, index, onRemoveSuccess, onRemoveFail);
+    removeSecurityPolicyRule(policyID, index, onRemoveSuccess, onRemoveFail);
   }
 
   const content = texts.content + (index + 1) + texts.content2;
