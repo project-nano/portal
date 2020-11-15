@@ -53,6 +53,7 @@ const i18n = {
     gateway: "Gateway",
     address: "Total Address",
     allocated: "Allocated Address",
+    provider: 'Provider',
     operates: "Operates",
     noResource: "No address pool available",
     modify: 'Modify',
@@ -66,6 +67,7 @@ const i18n = {
     gateway: "网关",
     address: "地址数量",
     allocated: "已分配地址",
+    provider: '分配模式',
     operates: "操作",
     noResource: "没有地址池",
     modify: '修改',
@@ -78,8 +80,12 @@ function dataToNodes(data, buttons){
   const operates = buttons.map((button, key) => (
     <IconButton label={button.label} icon={button.icon} onClick={button.onClick} href={button.href} key={key}/>
   ))
-  const { name, gateway, addresses, allocated } = data;
-  return [ name, gateway, addresses.toString(), allocated.toString(), operates];
+  const { name, gateway, provider, addresses, allocated } = data;
+  var providerName = 'DHCP';
+  if ('cloudinit' === provider){
+    providerName = 'Cloud-Init';
+  }
+  return [ name, providerName, gateway, addresses.toString(), allocated.toString(), operates];
 }
 
 export default function PoolList(props){
@@ -221,7 +227,7 @@ export default function PoolList(props){
       content = (
         <Table
           color="primary"
-          headers={[texts.name, texts.gateway, texts.address, texts.allocated, texts.operates]}
+          headers={[texts.name, texts.provider, texts.gateway, texts.address, texts.allocated, texts.operates]}
           rows={rows}/>
       );
     }

@@ -7,6 +7,8 @@
 - Synchronize disk/media images from local storage
 - Guest policy rule management
 - Security policies management
+- Creating instances with security policy
+- Allocate addresses using Cloud-Init
 
 ### Fixed
 

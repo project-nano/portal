@@ -18,7 +18,7 @@ import Slider from '@material-ui/core/Slider';
 
 function InputComponent(props){
   var { type, label, value, onChange, required, oneRow, disabled, options,
-    on, off, rows, step, maxStep, minStep, marks,
+    on, off, rows, step, maxStep, minStep, marks, helper,
     ...rest } = props;
   let component;
   switch (type) {
@@ -32,6 +32,7 @@ function InputComponent(props){
             margin="normal"
             required={required}
             disabled={disabled}
+            helperText={helper}
             fullWidth
           />
         </Box>
@@ -112,7 +113,7 @@ function InputComponent(props){
     case "radio":
       component = (
         <Box m={0} pt={2}>
-          <FormControl component="fieldset" fullWidth>
+          <FormControl component="fieldset" fullWidth disabled={disabled} >
             <FormLabel component="legend">{label}</FormLabel>
             <RadioGroup name="type" value={value} onChange={onChange} row>
               <Box display='flex' alignItems='center'>
@@ -248,6 +249,7 @@ InputComponent.propTypes = {
       disabled: PropTypes.bool,
     })
   ),
+  helper: PropTypes.string,
 };
 
 export default function InputList(props){

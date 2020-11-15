@@ -9,6 +9,11 @@ const i18n = {
     title: 'Modify Address Pool',
     name: "Name",
     gateway: "Gateway",
+    provider: 'Provider',
+    interface: 'Interface Mode',
+    internal: 'Internal',
+    external: 'External',
+    both: 'Both',
     dns1: "DNS1",
     dns2: "DNS2",
     cancel: 'Cancel',
@@ -18,6 +23,11 @@ const i18n = {
     title: '修改地址资源池',
     name: "名称",
     gateway: "网关地址",
+    provider: '分配模式',
+    interface: '接口类型',
+    internal: '内部',
+    external: '外部',
+    both: '内外部',
     dns1: "主DNS",
     dns2: "副DNS",
     cancel: '取消',
@@ -29,9 +39,22 @@ export default function ModifyDialog(props){
   const defaultValues = {
     name: '',
     gateway: '',
+    provider: 'dhcp',
+    mode: 'internal',
     dns1: '',
     dns2: '',
   };
+  const providerOptions = [
+    {
+      label: 'DHCP',
+      value: 'dhcp',
+    },
+    {
+      label: 'Cloud-Init',
+      value: 'cloudinit',
+    },
+  ];
+
   const { lang, pool, open, onSuccess, onCancel } = props;
   const [ initialed, setInitialed ] = React.useState(false);
   const [ operatable, setOperatable ] = React.useState(true);
@@ -40,7 +63,20 @@ export default function ModifyDialog(props){
   const [ request, setRequest ] = React.useState(defaultValues);
   const texts = i18n[lang];
   const title = texts.title + ' ' + pool;
-
+  const modeOptions = [
+    {
+      label: texts.internal,
+      value: 'internal',
+    },
+    {
+      label: texts.external,
+      value: 'external',
+    },
+    {
+      label: texts.both,
+      value: 'both',
+    },
+  ];
   const onModifyFail =React.useCallback(msg =>{
     if(!mounted){
       return;
@@ -94,7 +130,7 @@ export default function ModifyDialog(props){
       }
       dnsList.push(request.dns2);
     }
-    modifyNetworkPool(pool, request.gateway, dnsList, onModifySuccess, onModifyFail);
+    modifyNetworkPool(pool, request.gateway, request.provider, dnsList, onModifySuccess, onModifyFail);
   }
 
   const handleRequestPropsChanged = name => e =>{
@@ -127,9 +163,19 @@ export default function ModifyDialog(props){
         primary = pool.dns[0];
         secondary = pool.dns[1];
       }
+      var provider = 'dhcp';
+      if (pool.provider){
+        provider = pool.provider;
+      }
+      var mode = 'internal';
+      if (pool.mode){
+        mode = pool.mode;
+      }
       setRequest({
         name: pool.name,
         gateway: pool.gateway,
+        provider: provider,
+        mode: mode,
         dns1: primary,
         dns2: secondary,
       })
@@ -165,6 +211,17 @@ export default function ModifyDialog(props){
         md: 4,
       },
       {
+        type: "radio",
+        label: texts.provider,
+        onChange: handleRequestPropsChanged('provider'),
+        value: request.provider,
+        oneRow: true,
+        options: providerOptions,
+        xs: 12,
+        sm: 8,
+        md: 6,
+      },
+      {
         type: "text",
         label: texts.gateway,
         onChange: handleRequestPropsChanged('gateway'),
@@ -195,6 +252,18 @@ export default function ModifyDialog(props){
         xs: 12,
         sm: 10,
         md: 8,
+      },
+      {
+        type: "radio",
+        label: texts.interface,
+        onChange: handleRequestPropsChanged('mode'),
+        value: request.mode,
+        oneRow: true,
+        disabled: true,
+        options: modeOptions,
+        xs: 12,
+        sm: 8,
+        md: 6,
       },
     ];
 

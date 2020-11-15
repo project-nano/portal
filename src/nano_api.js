@@ -2,10 +2,10 @@ import axios from "axios";
 import { getLoggedSession } from 'utils.js';
 
 // const apiRoot = 'http://192.168.3.224:5870/api/v1';
-const apiRoot = 'http://192.168.3.26:5870/api/v1';
+// const apiRoot = 'http://192.168.3.26:5870/api/v1';
 // const apiRoot = 'http://192.168.1.111:5870/api/v1';
 // const apiRoot = 'http://192.168.1.64:5870/api/v1';
-// const apiRoot = '/api/v1';
+const apiRoot = '/api/v1';
 const HeaderNanoSession = "Nano-Session";
 const currentVersion = '1.3.0';
 
@@ -345,23 +345,25 @@ export function getNetworkPool(name, onSuccess, onFail){
   getRequest('/address_pools/' + name, onSuccess, onFail);
 }
 
-export function createNetworkPool(name, gateway, dnsList, onSuccess, onFail){
+export function createNetworkPool(name, gateway, provider, dnsList, onSuccess, onFail){
   const onOperateSuccess = () =>{
     onSuccess(name);
   }
   var request = {
     gateway: gateway,
+    provider: provider,
     dns: dnsList,
   }
   postRequest('/address_pools/' + name, request, onOperateSuccess, onFail);
 }
 
-export function modifyNetworkPool(name, gateway, dnsList, onSuccess, onFail){
+export function modifyNetworkPool(name, gateway, provider, dnsList, onSuccess, onFail){
   const onOperateSuccess = () =>{
     onSuccess(name);
   }
   var request = {
     gateway: gateway,
+    provider: provider,
     dns: dnsList,
   }
   putRequest('/address_pools/' + name, request, onOperateSuccess, onFail);
@@ -444,7 +446,7 @@ export function getInstanceStatus(id, onSuccess, onFail, onCreating){
 }
 
 export function createInstance(name, pool, cores, memory, disks, autoStartup,
-  fromImage, systemVersion, modules, cloudInit, qos, onAccept, onSuccess, onFail){
+  fromImage, systemVersion, modules, cloudInit, qos, security_policy, onAccept, onSuccess, onFail){
     var session = getLoggedSession();
     if (null === session){
       onFail('session expired');
@@ -470,6 +472,9 @@ export function createInstance(name, pool, cores, memory, disks, autoStartup,
     }
     if (qos){
       request.qos = qos;
+    }
+    if (security_policy){
+      request.security_policy_group = security_policy;
     }
     const onCreateResponse = (status, data) => {
       if (202 === status){

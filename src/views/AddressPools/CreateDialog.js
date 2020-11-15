@@ -7,6 +7,11 @@ const i18n = {
   'en':{
     title: 'Create Network Pool',
     name: "Name",
+    provider: 'Provider',
+    interface: 'Interface Mode',
+    internal: 'Internal',
+    external: 'External',
+    both: 'Both',
     gateway: "Gateway",
     dns1: "DNS1",
     dns2: "DNS2",
@@ -16,6 +21,11 @@ const i18n = {
   'cn':{
     title: '创建地址资源池',
     name: "名称",
+    provider: '分配模式',
+    interface: '接口类型',
+    internal: '内部',
+    external: '外部',
+    both: '内外部',
     gateway: "网关地址",
     dns1: "主DNS",
     dns2: "副DNS",
@@ -28,15 +38,41 @@ export default function CreateDialog(props){
   const defaultValues = {
     name: '',
     gateway: '',
+    provider: 'dhcp',
+    mode: 'internal',
     dns1: '',
     dns2: '',
   };
+  const providerOptions = [
+    {
+      label: 'DHCP',
+      value: 'dhcp',
+    },
+    {
+      label: 'Cloud-Init',
+      value: 'cloudinit',
+    },
+  ];
   const { lang, open, onSuccess, onCancel } = props;
   const [ operatable, setOperatable ] = React.useState(true);
   const [ prompt, setPrompt ] = React.useState('');
   const [ request, setRequest ] = React.useState(defaultValues);
   const texts = i18n[lang];
   const title = texts.title;
+  const modeOptions = [
+    {
+      label: texts.internal,
+      value: 'internal',
+    },
+    {
+      label: texts.external,
+      value: 'external',
+    },
+    {
+      label: texts.both,
+      value: 'both',
+    },
+  ];
   const onCreateFail = msg =>{
     setOperatable(true);
     setPrompt(msg);
@@ -90,7 +126,7 @@ export default function CreateDialog(props){
       dnsList.push(request.dns2);
     }
 
-    createNetworkPool(request.name, request.gateway, dnsList, onCreateSuccess, onCreateFail);
+    createNetworkPool(request.name, request.gateway, request.provider, dnsList, onCreateSuccess, onCreateFail);
   }
 
   const handleRequestPropsChanged = name => e =>{
@@ -113,6 +149,17 @@ export default function CreateDialog(props){
       xs: 12,
       sm: 6,
       md: 4,
+    },
+    {
+      type: "radio",
+      label: texts.provider,
+      onChange: handleRequestPropsChanged('provider'),
+      value: request.provider,
+      oneRow: true,
+      options: providerOptions,
+      xs: 12,
+      sm: 8,
+      md: 6,
     },
     {
       type: "text",
@@ -145,6 +192,18 @@ export default function CreateDialog(props){
       xs: 12,
       sm: 10,
       md: 8,
+    },
+    {
+      type: "radio",
+      label: texts.interface,
+      onChange: handleRequestPropsChanged('mode'),
+      value: request.mode,
+      oneRow: true,
+      disabled: true,
+      options: modeOptions,
+      xs: 12,
+      sm: 8,
+      md: 6,
     },
   ];
 

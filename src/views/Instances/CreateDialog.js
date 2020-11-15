@@ -3,20 +3,12 @@ import React from "react";
 import Grid from "@material-ui/core/Grid";
 import Box from '@material-ui/core/Box';
 import Skeleton from '@material-ui/lab/Skeleton';
-import TextField from '@material-ui/core/TextField';
-import MenuItem from '@material-ui/core/MenuItem';
-import Select from '@material-ui/core/Select';
-import InputLabel from '@material-ui/core/InputLabel';
-import Switch from '@material-ui/core/Switch';
-import Radio from '@material-ui/core/Radio';
-import RadioGroup from '@material-ui/core/RadioGroup';
 // import FormHelperText from '@material-ui/core/FormHelperText';
 import FormControlLabel from '@material-ui/core/FormControlLabel';
 import FormControl from '@material-ui/core/FormControl';
 import FormLabel from '@material-ui/core/FormLabel';
 import FormGroup from '@material-ui/core/FormGroup';
 import Checkbox from '@material-ui/core/Checkbox';
-import Slider from '@material-ui/core/Slider';
 import ExpansionPanel from '@material-ui/core/ExpansionPanel';
 import ExpansionPanelSummary from '@material-ui/core/ExpansionPanelSummary';
 import ExpansionPanelDetails from '@material-ui/core/ExpansionPanelDetails';
@@ -27,9 +19,10 @@ import Typography from '@material-ui/core/Typography';
 // dashboard components
 import GridItem from "components/Grid/GridItem.js";
 import SingleRow from "components/Grid/SingleRow.js";
+import InputList from "components/CustomInput/InputList";
 import CustomDialog from "components/Dialog/CustomDialog.js";
 import { getAllComputePools, searchDiskImages, createInstance,
-  getInstanceConfig, querySystemTemplates } from 'nano_api.js';
+  getInstanceConfig, querySystemTemplates, searchSecurityPolicyGroups } from 'nano_api.js';
 
 const i18n = {
   'en':{
@@ -61,6 +54,8 @@ const i18n = {
     dataPath: 'Data Path',
     off: 'Off',
     on: 'On',
+    ciOptions: 'Cloud Init Options',
+    securityPolicy: 'Security Policy',
     cancel: 'Cancel',
     confirm: 'Confirm',
   },
@@ -93,6 +88,8 @@ const i18n = {
     dataPath: '挂载数据路径',
     off: '关闭',
     on: '开启',
+    ciOptions: 'Cloud Init选项',
+    securityPolicy: '安全策略',
     cancel: '取消',
     confirm: '确定',
   },
@@ -116,6 +113,7 @@ export default function CreateDialog(props){
     auto_start: false,
     system_template: '',
     from_image: defaultOption,
+    security_policy: '',
     modules: new Map(),
     module_cloud_init_admin_name: 'root',
     module_cloud_init_admin_password: '',
@@ -136,6 +134,7 @@ export default function CreateDialog(props){
     pools: [],
     images: [],
     versions: [],
+    policies: [],
   });
   const texts = i18n[lang];
   const title = texts.title;
@@ -257,7 +256,8 @@ export default function CreateDialog(props){
     };
     createInstance(request.name, request.pool, cores, memory, disks,
       request.auto_start, fromImage, systemVersion, modules,
-      cloudInit, qos, onCreateAccept, onCreateSuccess, onCreateFail);
+      cloudInit, qos, request.security_policy, onCreateAccept,
+      onCreateSuccess, onCreateFail);
   }
 
   const handleRequestPropsChanged = name => e =>{
@@ -307,14 +307,39 @@ export default function CreateDialog(props){
     if (!open){
       return;
     }
+    // var session = getLoggedSession();
+    // if (null === session){
+    //   onCreateFail('session expired');
+    //   return;
+    // }
+
     var poolOptions = [];
     var imageOptions = [{
       label: texts.blankSystem,
       value: defaultOption,
     }];
     var templateOptions = [];
+    var securityPolicies = [];
 
     setMounted(true);
+    const onQueryPoliciesSuccess = datalist =>{
+      if(!mounted){
+        return;
+      }
+      datalist.forEach(({id, name}) =>{
+        securityPolicies.push({
+          label: name,
+          value: id,
+        });
+      });
+      setOptions({
+        pools: poolOptions,
+        images: imageOptions,
+        versions: templateOptions,
+        policies: securityPolicies,
+      });
+      setInitialed(true);
+    }
     const onQueryTemplateSuccess = dataList =>{
       if(!mounted){
         return;
@@ -325,12 +350,8 @@ export default function CreateDialog(props){
           value: id,
         });
       });
-      setOptions({
-        pools: poolOptions,
-        images: imageOptions,
-        versions: templateOptions,
-      });
-      setInitialed(true);
+      searchSecurityPolicyGroups('', '', true, true,
+        onQueryPoliciesSuccess, onCreateFail);
     }
 
     const onQueryImageSuccess = dataList =>{
@@ -393,10 +414,16 @@ export default function CreateDialog(props){
       </Grid>
     )
   }else{
-    const coresOptions = [];
-    [1, 2, 4, 8, 16].forEach( core =>{
-      coresOptions.push(core.toString());
+    const availableCores = [1, 2, 4, 8, 16];
+    var coresOptions = []
+    availableCores.forEach( core => {
+      coresOptions.push({
+        label: core.toString(),
+        value: core.toString(),
+      });
     });
+
+
     const memoryOptionsRates = [1, 2, 4, 8, 16, 32];
     const memoryBase = 512;
     const MiB = 1 << 20;
@@ -411,7 +438,7 @@ export default function CreateDialog(props){
         name = value / MiB + ' MB';
       }
       memoryOptions.push({
-        name: name,
+        label: name,
         value: value.toString(),
       });
     });
@@ -429,18 +456,20 @@ export default function CreateDialog(props){
           label: value + ' GB',
         })
       });
-      systemDiskSlider = (
-        <Slider
-          color="secondary"
-          value={request.system_disk}
-          max={maxRange}
-          min={minRange}
-          step={step}
-          valueLabelDisplay="auto"
-          marks={systemMarks}
-          onChange={handleSliderValueChanged('system_disk')}
-        />
-      );
+      systemDiskSlider = {
+        type: 'slider',
+        label: texts.systemDisk,
+        onChange: handleSliderValueChanged('system_disk'),
+        value: request.system_disk,
+        oneRow: true,
+        maxStep: maxRange,
+        minStep: minRange,
+        step: step,
+        marks: systemMarks,
+        xs: 12,
+        sm: 6,
+        md: 4,
+      };
     }
     //disk slider
     let dataDiskSlider;
@@ -459,18 +488,20 @@ export default function CreateDialog(props){
         label: '20 GB',
       },
       ];
-      dataDiskSlider = (
-        <Slider
-          color="secondary"
-          value={request.data_disk}
-          max={maxRange}
-          min={minRange}
-          step={step}
-          valueLabelDisplay="auto"
-          marks={dataMarks}
-          onChange={handleSliderValueChanged('data_disk')}
-        />
-      );
+      dataDiskSlider = {
+        type: 'slider',
+        label: texts.dataDisk,
+        onChange: handleSliderValueChanged('data_disk'),
+        value: request.data_disk,
+        oneRow: true,
+        maxStep: maxRange,
+        minStep: minRange,
+        step: step,
+        marks: dataMarks,
+        xs: 12,
+        sm: 6,
+        md: 4,
+      };
     }
 
     let moduleOption;
@@ -486,42 +517,38 @@ export default function CreateDialog(props){
       ];
       let ciOptions;
       if (request.modules.get(ciModuleName)){
+        const ciComponents = [
+          {
+            type: "text",
+            label: texts.adminName,
+            onChange: handleRequestPropsChanged('module_cloud_init_admin_name'),
+            value: request.module_cloud_init_admin_name,
+            oneRow: true,
+            xs: 12,
+          },
+          {
+            type: "text",
+            label: texts.adminPassword,
+            onChange: handleRequestPropsChanged('module_cloud_init_admin_password'),
+            helper: texts.blankHelper,
+            oneRow: true,
+            xs: 12,
+          },
+          {
+            type: "text",
+            label: texts.dataPath,
+            onChange: handleRequestPropsChanged('module_cloud_init_data_path'),
+            value: request.module_cloud_init_data_path,
+            disabled: true,
+            oneRow: true,
+            xs: 12,
+          },
+        ];
         //ci checked
         ciOptions = (
           <GridItem xs={12} sm={8} md={6}>
-            <Box m={0} pt={2}>
-              <FormControl component="fieldset" fullWidth>
-                <FormLabel component="legend">Cloud Init Options</FormLabel>
-                <SingleRow>
-                  <TextField
-                    label={texts.adminName}
-                    onChange={handleRequestPropsChanged('module_cloud_init_admin_name')}
-                    value={request.module_cloud_init_admin_name}
-                    margin="normal"
-                    fullWidth
-                  />
-                </SingleRow>
-                <SingleRow>
-                  <TextField
-                    label={texts.adminPassword}
-                    onChange={handleRequestPropsChanged('module_cloud_init_admin_password')}
-                    helperText={texts.blankHelper}
-                    margin="normal"
-                    fullWidth
-                  />
-                </SingleRow>
-                <SingleRow>
-                  <TextField
-                    label={texts.dataPath}
-                    onChange={handleRequestPropsChanged('module_cloud_init_data_path')}
-                    value={request.module_cloud_init_data_path}
-                    margin="normal"
-                    disabled
-                    fullWidth
-                  />
-                </SingleRow>
-              </FormControl>
-            </Box>
+            <FormLabel component="legend">{texts.ciOptions}</FormLabel>
+            <InputList inputs={ciComponents}/>
           </GridItem>
         )
       }else{
@@ -567,159 +594,170 @@ export default function CreateDialog(props){
       moduleOption = <GridItem/>;
     }
 
+    var inputComponents = [
+      {
+        type: "text",
+        label: texts.name,
+        onChange: handleRequestPropsChanged('name'),
+        value: request.name,
+        oneRow: true,
+        required: true,
+        xs: 12,
+        sm: 6,
+        md: 4,
+      },
+      {
+        type: "select",
+        label: texts.resourcePool,
+        onChange: handleRequestPropsChanged('pool'),
+        value: request.pool,
+        oneRow: true,
+        options: options.pools,
+        required: true,
+        xs: 10,
+        sm: 4,
+        md: 3,
+      },
+      {
+        type: "radio",
+        label: texts.core,
+        onChange: handleRequestPropsChanged('cores'),
+        value: request.cores,
+        oneRow: true,
+        options: coresOptions,
+        required: true,
+        xs: 12,
+      },
+      {
+        type: "radio",
+        label: texts.memory,
+        onChange: handleRequestPropsChanged('memory'),
+        value: request.memory,
+        oneRow: true,
+        options: memoryOptions,
+        required: true,
+        xs: 12,
+      },
+      systemDiskSlider,
+      dataDiskSlider,
+      {
+        type: "select",
+        label: texts.sourceImage,
+        onChange: handleRequestPropsChanged('from_image'),
+        value: request.from_image,
+        oneRow: true,
+        options: options.images,
+        xs: 10,
+        sm: 6,
+        md: 5,
+      },
+      {
+        type: "select",
+        label: texts.systemVersion,
+        onChange: handleRequestPropsChanged('system_template'),
+        value: request.system_template,
+        oneRow: true,
+        options: options.versions,
+        xs: 10,
+        sm: 5,
+        md: 4,
+      },
+      {
+        type: "switch",
+        label: texts.autoStartup,
+        onChange: handleCheckedValueChanged('auto_start'),
+        value: request.auto_start,
+        on: texts.on,
+        off: texts.off,
+        oneRow: true,
+        xs: 8,
+        sm: 6,
+        md: 4,
+      },
+    ];
+    if (options.policies && 0 !== options.policies.length){
+      inputComponents.push({
+        type: "select",
+        label: texts.securityPolicy,
+        onChange: handleRequestPropsChanged('security_policy'),
+        value: request.security_policy,
+        oneRow: true,
+        options: options.policies,
+        xs: 10,
+        sm: 5,
+        md: 4,
+      })
+    }
+
+    const priorityOptions = [
+      {
+        value: 'high',
+        label: texts.cpuPriorityHigh,
+      },
+      {
+        value: 'medium',
+        label: texts.cpuPriorityMedium,
+      },
+      {
+        value: 'low',
+        label: texts.cpuPriorityLow,
+      },
+    ]
+    const qosComponents = [
+      {
+        type: "radio",
+        label: texts.cpuPriority,
+        onChange: handleRequestPropsChanged('priority'),
+        value: request.priority,
+        oneRow: true,
+        options: priorityOptions,
+        xs: 12,
+      },
+      {
+        type: 'slider',
+        label: texts.iops,
+        onChange: handleSliderValueChanged('iops'),
+        value: request.iops,
+        oneRow: true,
+        maxStep: 2000,
+        minStep: 0,
+        step: 10,
+        marks: [{value: 0, label: texts.noLimit}, {value: 2000, label: '2000'}],
+        xs: 12,
+      },
+      {
+        type: 'slider',
+        label: texts.inbound,
+        onChange: handleSliderValueChanged('inbound'),
+        value: request.inbound,
+        oneRow: true,
+        maxStep: 20,
+        minStep: 0,
+        step: 2,
+        marks: [{value: 0, label: texts.noLimit}, {value: 20, label: '20 Mbit/s'}],
+        xs: 12,
+      },
+      {
+        type: 'slider',
+        label: texts.outbound,
+        onChange: handleSliderValueChanged('outbound'),
+        value: request.outbound,
+        oneRow: true,
+        maxStep: 20,
+        minStep: 0,
+        step: 2,
+        marks: [{value: 0, label: texts.noLimit}, {value: 20, label: '20 Mbit/s'}],
+        xs: 12,
+      },
+    ];
     content = (
       <Grid container>
-        <SingleRow>
-          <GridItem xs={12} sm={6} md={4}>
-            <Box m={0} pt={2}>
-              <TextField
-                label={texts.name}
-                onChange={handleRequestPropsChanged('name')}
-                value={request.name}
-                margin="normal"
-                required
-                fullWidth
-              />
-            </Box>
-          </GridItem>
-        </SingleRow>
-        <SingleRow>
-          <GridItem xs={10} sm={4} md={3}>
-            <Box m={0} pt={2}>
-              <InputLabel htmlFor="pool">{texts.resourcePool}</InputLabel>
-              <Select
-                value={request.pool}
-                onChange={handleRequestPropsChanged('pool')}
-                inputProps={{
-                  name: 'pool',
-                  id: 'pool',
-                }}
-                required
-                fullWidth
-              >
-                {
-                  options.pools.map((option, key) =>(
-                    <MenuItem value={option.value} key={key}>{option.label}</MenuItem>
-                  ))
-                }
-              </Select>
-            </Box>
-          </GridItem>
-        </SingleRow>
-        <SingleRow>
-          <GridItem xs={12}>
-            <Box m={0} pt={2}>
-            <FormControl component="fieldset" fullWidth>
-              <FormLabel component="legend">{texts.core}</FormLabel>
-              <RadioGroup aria-label={texts.core} name="cores" value={request.cores} onChange={handleRequestPropsChanged('cores')} row>
-                <Grid container>
-                {
-                  coresOptions.map(option => <GridItem xs={3} sm={2} md={1} key={option}><FormControlLabel value={option} control={<Radio />} label={option}/></GridItem>)
-                }
-                </Grid>
-              </RadioGroup>
-            </FormControl>
-            </Box>
-          </GridItem>
-          <GridItem xs={12}>
-            <Box m={0} pt={2}>
-              <FormControl component="fieldset" fullWidth>
-                <FormLabel component="legend">{texts.memory}</FormLabel>
-                <RadioGroup aria-label={texts.memory} name="memory" value={request.memory} onChange={handleRequestPropsChanged('memory')} row>
-                  <Grid container>
-                  {
-                    memoryOptions.map(option => <GridItem xs={6} sm={3} md={2} key={option.value}><FormControlLabel value={option.value} control={<Radio />} label={option.name}/></GridItem>)
-                  }
-                  </Grid>
-                </RadioGroup>
-              </FormControl>
-            </Box>
-          </GridItem>
-        </SingleRow>
-
-        <SingleRow>
-          <GridItem xs={12} sm={6} md={4}>
-            <Box m={0} pt={2}>
-              <FormLabel component="legend">{texts.systemDisk}</FormLabel>
-              {systemDiskSlider}
-            </Box>
-          </GridItem>
-        </SingleRow>
-        <SingleRow>
-          <GridItem xs={12} sm={6} md={4}>
-            <Box m={0} pt={2}>
-              <FormLabel component="legend">{texts.dataDisk}</FormLabel>
-              {dataDiskSlider}
-            </Box>
-          </GridItem>
-        </SingleRow>
-        <SingleRow>
-          <GridItem xs={10} sm={6} md={5}>
-            <Box m={0} pb={2}>
-              <InputLabel htmlFor="image">{texts.sourceImage}</InputLabel>
-              <Select
-                value={request.from_image}
-                onChange={handleRequestPropsChanged('from_image')}
-                inputProps={{
-                  name: 'image',
-                  id: 'image',
-                }}
-                fullWidth
-              >
-                {
-                  options.images.map((option, key) =>(
-                    <MenuItem value={option.value} key={key}>{option.label}</MenuItem>
-                  ))
-                }
-              </Select>
-            </Box>
-          </GridItem>
-        </SingleRow>
-        <SingleRow>
-          <GridItem xs={10} sm={5} md={4}>
-            <Box m={0} pb={2}>
-              <InputLabel htmlFor="version">{texts.systemVersion}</InputLabel>
-              <Select
-                value={request.system_template}
-                onChange={handleRequestPropsChanged('system_template')}
-                inputProps={{
-                  name: 'version',
-                  id: 'version',
-                }}
-                fullWidth
-              >
-                {
-                  options.versions.map((option, key) =>(
-                    <MenuItem value={option.value} key={key}>{option.label}</MenuItem>
-                  ))
-                }
-              </Select>
-            </Box>
-          </GridItem>
-        </SingleRow>
-        <SingleRow>
-          <GridItem xs={8} sm={6} md={4}>
-            <Box m={0} pb={2}>
-              <InputLabel htmlFor="auto_start">{texts.autoStartup}</InputLabel>
-
-                {texts.off}
-                <Switch
-                  checked={request.failover}
-                  onChange={handleCheckedValueChanged('auto_start')}
-                  color="primary"
-                  inputProps={{
-                    name: 'auto_start',
-                    id: 'auto_start',
-                  }}
-                />
-                {texts.on}
-
-            </Box>
-          </GridItem>
-        </SingleRow>
+        <Box m={1} pt={2}>
+          <InputList inputs={inputComponents}/>
+        </Box>
         {moduleOption}
         <SingleRow>
-          <GridItem xs={12} sm={8} md={6}>
+          <GridItem xs={12} sm={9} md={7}>
             <Box m={0} pb={2}>
             <ExpansionPanel>
               <ExpansionPanelSummary
@@ -728,65 +766,9 @@ export default function CreateDialog(props){
                 {texts.qos}
               </ExpansionPanelSummary>
               <ExpansionPanelDetails>
-                <Grid container>
-                  <GridItem xs={12}>
-                    <Box m={1} p={2}>
-                      <FormControl component="fieldset" fullWidth>
-                        <FormLabel component="legend">{texts.cpuPriority}</FormLabel>
-                        <RadioGroup aria-label={texts.cpuPriority} value={request.priority} onChange={handleRequestPropsChanged('priority')} row>
-                          <FormControlLabel value='high' control={<Radio />} label={texts.cpuPriorityHigh} key='high'/>
-                          <FormControlLabel value='medium' control={<Radio />} label={texts.cpuPriorityMedium} key='medium'/>
-                          <FormControlLabel value='low' control={<Radio />} label={texts.cpuPriorityLow} key='low'/>
-                        </RadioGroup>
-                      </FormControl>
-                    </Box>
-                  </GridItem>
-                  <GridItem xs={12}>
-                    <Box m={1} p={2}>
-                        <FormLabel component="legend">{texts.iops}</FormLabel>
-                        <Slider
-                          color="secondary"
-                          value={request.iops}
-                          max={2000}
-                          min={0}
-                          step={10}
-                          valueLabelDisplay="auto"
-                          marks={[{value: 0, label: texts.noLimit}, {value: 2000, label: 2000}]}
-                          onChange={handleSliderValueChanged('iops')}
-                        />
-                    </Box>
-                  </GridItem>
-                  <GridItem xs={12}>
-                    <Box m={1} p={2}>
-                        <FormLabel component="legend">{texts.inbound}</FormLabel>
-                        <Slider
-                          color="secondary"
-                          value={request.inbound}
-                          max={20}
-                          min={0}
-                          step={2}
-                          valueLabelDisplay="auto"
-                          marks={[{value: 0, label: texts.noLimit}, {value: 20, label: '20 Mbit/s'}]}
-                          onChange={handleSliderValueChanged('inbound')}
-                        />
-                    </Box>
-                  </GridItem>
-                  <GridItem xs={12}>
-                    <Box m={1} p={2}>
-                        <FormLabel component="legend">{texts.outbound}</FormLabel>
-                        <Slider
-                          color="secondary"
-                          value={request.outbound}
-                          max={20}
-                          min={0}
-                          step={2}
-                          valueLabelDisplay="auto"
-                          marks={[{value: 0, label: texts.noLimit}, {value: 20, label: '20 Mbit/s'}]}
-                          onChange={handleSliderValueChanged('outbound')}
-                        />
-                    </Box>
-                  </GridItem>
-                </Grid>
+                <Box m={1} pt={2}>
+                  <InputList inputs={qosComponents}/>
+                </Box>
               </ExpansionPanelDetails>
             </ExpansionPanel>
           </Box>
