@@ -47,24 +47,35 @@ const i18n = {
 
 export default function ControlInstance(props){
     const instanceID = props.match.params.id;
+    const { lang } = props;
     const [ channel, setChannel ] = React.useState(null);
+    const [ focus, setFocus ] = React.useState(true);
+    const [ mounted, setMounted ] = React.useState(false);
+    const [ initialed, setInitialed ] = React.useState(false);
     //for dialog
     const [ insertMediaDialogVisible, setInsertMediaDialogVisible ] = React.useState(false);
     const [ notifyColor, setNotifyColor ] = React.useState('warning');
     const [ notifyMessage, setNotifyMessage ] = React.useState("");
+    const texts = i18n[lang];
 
     const closeNotify = () => {
       setNotifyMessage("");
     }
 
     const showErrorMessage = React.useCallback((msg) => {
+      if(!mounted){
+        return;
+      }
       const notifyDuration = 3000;
       setNotifyColor('warning');
       setNotifyMessage(msg);
       setTimeout(closeNotify, notifyDuration);
-    }, [setNotifyColor, setNotifyMessage]);
+    }, [mounted, setNotifyColor, setNotifyMessage]);
 
     const showNotifyMessage = (msg) => {
+      if(!mounted){
+        return;
+      }
       const notifyDuration = 3000;
       setNotifyColor('info');
       setNotifyMessage(msg);
@@ -125,29 +136,38 @@ export default function ControlInstance(props){
     }
 
     React.useEffect(() =>{
-      const onGetInstanceSuccess = status =>{
-        const onOpenChannelSuccess = (id, password) =>{
-          const channelData = {
-            name: status.name,
-            pool: status.pool,
-            cell: status.cell,
-            channel: id,
-            password: password,
-            delegate: {},
-          }
-          setChannel(channelData);
-        }
-        openMonitorChannel(instanceID, onOpenChannelSuccess, onMonitorFail);
+      if (!instanceID){
+        return;
       }
 
-      getInstanceConfig(instanceID, onGetInstanceSuccess, onMonitorFail);
-    }, [instanceID, onMonitorFail]);
+      setMounted(true);
+      if (!initialed){
+        console.log('load instance ' + instanceID);
+        const onGetInstanceSuccess = status =>{
+          const onOpenChannelSuccess = (id, password) =>{
+            const channelData = {
+              name: status.name,
+              pool: status.pool,
+              cell: status.cell,
+              channel: id,
+              password: password,
+              delegate: {},
+            }
+            setChannel(channelData);
+            setInitialed(true);
+            console.log('channel ready');
+          }
+          openMonitorChannel(instanceID, onOpenChannelSuccess, onMonitorFail);
+        }
+        getInstanceConfig(instanceID, onGetInstanceSuccess, onMonitorFail);
+      }
+      return () =>{
+        setMounted(false);
+      }
+    }, [instanceID, onMonitorFail, initialed]);
 
-
-    const { lang } = props;
-    const texts = i18n[lang];
     let content, headers;
-    if (null === channel){
+    if (!initialed){
       content = <Skeleton variant="rect" style={{height: '10rem'}}/>;
       headers = <Box/>;
     }else{
@@ -157,8 +177,10 @@ export default function ControlInstance(props){
           url={url}
           password={channel.password}
           callback={channel.delegate}
+          focus={focus}
           />
       );
+      console.log('update display');
       const operators = [
         {
           tips: texts.sendKeys,
@@ -221,7 +243,7 @@ export default function ControlInstance(props){
 
     return (
       <GridContainer>
-        <GridItem xs={12} sm={12} md={12}>
+        <GridItem xs={12}>
           <Card>
             <CardHeader color="primary">
               {headers}

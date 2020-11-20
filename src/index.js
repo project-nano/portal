@@ -28,6 +28,7 @@ import { primaryColor, infoColor, dangerColor } from "assets/jss/material-dashbo
 import Admin from "layouts/Admin.js";
 import Login from "views/Login/Login.js";
 import Initial from "views/Login/Initial.js";
+import ControlInstance from "views/Instances/ControlInstance.js";
 import { getLanguage } from "utils.js";
 
 import "assets/css/material-dashboard-react.css?v=1.8.0";
@@ -89,6 +90,7 @@ function LanguageProvider(props){
             <Route path="/admin" render={ (props) => <Admin lang={lang} setLang={setLang}/>}/>
             <Route path="/login" render={ (props) => <Login lang={lang} setLang={setLang}/>}/>
             <Route path="/initial" render={ (props) => <Initial lang={lang} setLang={setLang}/>}/>
+            <Route path="/monitor/:id" render={ props => <ControlInstance lang={lang} {...props}/>}/>
             <Redirect from="/" to="/login" />
           </Switch>
         </Router>

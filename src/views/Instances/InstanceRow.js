@@ -228,7 +228,7 @@ export default function InstanceRow(props){
   const controllOperator = {
     tips: texts.remoteControl,
     icon: DesktopWindowsIcon,
-    href: '/admin/instances/control/' + instance.id,
+    href: '/monitor/' + instance.id,
     target: '_blank',
   };
   const stopOperator = {
