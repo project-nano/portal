@@ -33,6 +33,8 @@ const i18n = {
     reset: 'Reset Instance',
     insertMedia: 'Insert Media',
     ejectMedia: 'Eject Media',
+    activated: 'The input is already redirected, move out the mouse to release control',
+    deactivated: 'Move the mouse to the screen to control the instance',
   },
   'cn':{
     instance: '云主机',
@@ -42,6 +44,8 @@ const i18n = {
     reset: '强制重启云主机',
     insertMedia: '插入光盘镜像',
     ejectMedia: '弹出光盘镜像',
+    activated: '输入已重定向到云主机，鼠标离开画面解除控制',
+    deactivated: '鼠标移动到监控画面开始控制云主机',
   }
 }
 
@@ -49,9 +53,10 @@ export default function ControlInstance(props){
     const instanceID = props.match.params.id;
     const { lang } = props;
     const [ channel, setChannel ] = React.useState(null);
-    const [ focus, setFocus ] = React.useState(true);
+    const [ focus, setFocus ] = React.useState(false);
     const [ mounted, setMounted ] = React.useState(false);
     const [ initialed, setInitialed ] = React.useState(false);
+    const [ initializing, setInitializing ] = React.useState(false);
     //for dialog
     const [ insertMediaDialogVisible, setInsertMediaDialogVisible ] = React.useState(false);
     const [ notifyColor, setNotifyColor ] = React.useState('warning');
@@ -135,14 +140,18 @@ export default function ControlInstance(props){
         }
     }
 
+    const handleFocusChanged = isActivated => {
+      setFocus(isActivated);
+    }
+
     React.useEffect(() =>{
       if (!instanceID){
         return;
       }
 
       setMounted(true);
-      if (!initialed){
-        console.log('load instance ' + instanceID);
+      if (!initializing && !initialed){
+        setInitializing(true);
         const onGetInstanceSuccess = status =>{
           const onOpenChannelSuccess = (id, password) =>{
             const channelData = {
@@ -155,7 +164,7 @@ export default function ControlInstance(props){
             }
             setChannel(channelData);
             setInitialed(true);
-            console.log('channel ready');
+            setInitializing(false);
           }
           openMonitorChannel(instanceID, onOpenChannelSuccess, onMonitorFail);
         }
@@ -164,7 +173,7 @@ export default function ControlInstance(props){
       return () =>{
         setMounted(false);
       }
-    }, [instanceID, onMonitorFail, initialed]);
+    }, [instanceID, onMonitorFail, initialed, initializing]);
 
     let content, headers;
     if (!initialed){
@@ -177,10 +186,9 @@ export default function ControlInstance(props){
           url={url}
           password={channel.password}
           callback={channel.delegate}
-          focus={focus}
+          onFocusChanged={handleFocusChanged}
           />
       );
-      console.log('update display');
       const operators = [
         {
           tips: texts.sendKeys,
@@ -217,7 +225,7 @@ export default function ControlInstance(props){
         <Box display="flex" alignItems="center">
           <Box flexGrow={1}  fontWeight="fontWeightBold" letterSpacing={10}>
             <Typography component='span'>
-              {texts.instance + ': ' + channel.name}
+              {texts.instance + ': ' + channel.name + '  ('+ ( focus? texts.activated : texts.deactivated ) +')'}
             </Typography>
           </Box>
           {

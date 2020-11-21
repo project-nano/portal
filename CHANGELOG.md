@@ -1,6 +1,6 @@
 # Change Log
 
-## [1.3.0] - 2020-11-14
+## [1.3.0] - 2020-11-21
 
 ### Added
 
@@ -9,6 +9,10 @@
 - Security policies management
 - Creating instances with security policy
 - Allocate addresses using Cloud-Init
+
+### Changed
+
+- Optimize the control page of the instance
 
 ### Fixed
 

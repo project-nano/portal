@@ -2,30 +2,35 @@ import React from 'react';
 import RFB from '@novnc/novnc';
 
 export default function VncDisplay(props){
-  const { url, password, callback, focus } = props;
+  const { url, password, callback, onFocusChanged } = props;
   const canvas = React.createRef();
   const [ connection, setConnection ] = React.useState(null);
   const [ mounted, setMounted ] = React.useState(false);
   const [ initialed, setInitialed ] = React.useState(false);
 
-  // const bindRef = ref =>{
-  //   setCanvas(ref);
-  // }
-  //
-  // const onMouseEnter = () =>{
-  //   if (!connection){
-  //     return;
-  //   }
-  //   connection.focus();
-  // }
-  //
-  // const onMouseLeave = () =>{
-  //   if (!connection){
-  //     return;
-  //   }
-  //   connection.blur();
-  // }
-  const sendEmergencyKeys = React.useCallback(() =>{
+  const activateFocus = () =>{
+    if (!mounted){
+      return;
+    }
+    if (!connection){
+      return;
+    }
+    connection.focus();
+    onFocusChanged(true);
+  };
+
+  const deactivateFocus = () =>{
+    if (!mounted){
+      return;
+    }
+    if (!connection){
+      return;
+    }
+    connection.blur();
+    onFocusChanged(false);
+  };
+
+  const sendEmergencyKeys = () =>{
     if (!mounted){
       return;
     }
@@ -33,7 +38,12 @@ export default function VncDisplay(props){
       return;
     }
     connection.sendCtrlAltDel();
-  }, [mounted, connection]);
+  };
+
+  const clickScreen = e => {
+    e.preventDefault();
+    activateFocus();
+  }
 
   React.useEffect(()=>{
     if (!canvas ||!canvas.current || !url || !password){
@@ -47,9 +57,11 @@ export default function VncDisplay(props){
           password: password,
         },
         clipViewport: true,
+        focusOnClick: false,
         // scaleViewport: true,
         qualityLevel: 8,
       };
+
 
       var conn = new RFB(canvas.current, url, options);
       // const disconnect = () =>{
@@ -59,7 +71,6 @@ export default function VncDisplay(props){
       // conn.focus();
       setConnection(conn);
       setInitialed(true);
-      console.log('connection ready');
     }
 
     return () => {
@@ -69,20 +80,14 @@ export default function VncDisplay(props){
   }, [canvas, password, url, initialed]);
 
   //render
-
+  //bind callback
   callback.onEmergency = sendEmergencyKeys;
-  if (initialed){
-    if (focus){
-      connection.focus();
-      console.log('set focus');
-    }else{
-      connection.blur();
-      console.log('set blur');
-    }
-  }
   return (
     <div
       ref={canvas}
+      onMouseOver={activateFocus}
+      onMouseOut={deactivateFocus}
+      onMouseDown={clickScreen}
     />
   )
 }

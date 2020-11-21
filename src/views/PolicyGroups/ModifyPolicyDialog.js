@@ -186,7 +186,7 @@ export default function ModifyPolicyDialog(props){
         onChange: handleRequestPropsChanged('action'),
         value: request.action,
         options: actionOptions,
-        required: true,
+        disabled: true,
         oneRow: true,
         xs: 10,
         sm: 8,

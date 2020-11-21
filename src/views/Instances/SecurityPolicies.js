@@ -253,7 +253,7 @@ export default function SystemTemplates(props){
       content = <Skeleton variant="rect" style={{height: '10rem'}}/>;
     }else{
       var defaultAction = (
-        <FormControl component="fieldset" fullWidth>
+        <FormControl component="fieldset" fullWidth disabled>
           <RadioGroup name="type" value={data.default_action} onChange={changeDefaultAction} row>
             <Box display='flex' alignItems='center'>
               <Box><FormControlLabel value='accept' control={<Radio />} label={texts.accept}/></Box>
