@@ -216,6 +216,7 @@ export default function ModifyDialog(props){
         onChange: handleRequestPropsChanged('provider'),
         value: request.provider,
         oneRow: true,
+        disabled: true,
         options: providerOptions,
         xs: 12,
         sm: 8,
