@@ -13,6 +13,7 @@
 ### Changed
 
 - Optimize the control page of the instance
+- Update npm dependencies
 
 ### Fixed
 
