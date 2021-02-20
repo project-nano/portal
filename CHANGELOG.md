@@ -1,5 +1,15 @@
 # Change Log
 
+## [1.3.1] - 2021-02-22
+
+### Added
+
+- Set auto start in guest detail
+
+### Changed
+
+- Display hosting cell IP instead of name if available
+
 ## [1.3.0] - 2020-11-21
 
 ### Added

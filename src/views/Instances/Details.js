@@ -10,6 +10,7 @@ import Container from '@material-ui/core/Container';
 import Box from '@material-ui/core/Box';
 import Paper from '@material-ui/core/Paper';
 import Divider from '@material-ui/core/Divider';
+import Switch from '@material-ui/core/Switch';
 import NavigateBeforeIcon from '@material-ui/icons/NavigateBefore';
 import LockIcon from '@material-ui/icons/Lock';
 import VisibilityIcon from '@material-ui/icons/Visibility';
@@ -39,7 +40,7 @@ import ModifyDiskIOPSDialog from 'views/Instances/ModifyDiskIOPSDialog';
 import ModifyNetworkBandwidthDialog from 'views/Instances/ModifyNetworkBandwidthDialog';
 import ResetSecretDialog from "views/Instances/ResetSecretDialog";
 import { bytesToString, bpsToString } from 'utils.js';
-import { getInstanceConfig, getInstanceAdminPassword, writeLog } from "nano_api.js";
+import { getInstanceConfig, getInstanceAdminPassword, writeLog, setAutoStart } from "nano_api.js";
 
 const i18n = {
   'en':{
@@ -60,8 +61,8 @@ const i18n = {
     externalAddress: 'External Address',
     operatingSystem: 'Operating System',
     autoStartup: 'Auto Startup',
-    on: 'On',
-    off: 'Off',
+    enable: 'Enable',
+    disable: 'Disable',
     pool: 'Host Pool',
     cell: 'Host Cell',
     owner: 'Owner',
@@ -104,8 +105,8 @@ const i18n = {
     externalAddress: '外部地址',
     operatingSystem: '操作系统',
     autoStartup: '开机启动',
-    on: '打开',
-    off: '关闭',
+    enable: '启用',
+    disable: '未启用',
     pool: '所属资源池',
     cell: '承载资源节点',
     owner: '所属用户',
@@ -338,6 +339,20 @@ export default function Details(props){
       reloadGuestConfig();
     };
 
+    const setAutoStartSuccess = () => {
+      reloadGuestConfig();
+    }
+
+    const setAutoStartFail = msg => {
+      showErrorMessage("set auto start fail: " + msg);
+    }
+
+    const handleAutoStartChanged = e =>{
+      var enable = e.target.checked;
+      e.preventDefault();
+      setAutoStart(guestID, enable, setAutoStartSuccess, setAutoStartFail);
+    }
+
     React.useEffect(() =>{
       reloadGuestConfig();
     }, [reloadGuestConfig]);
@@ -522,7 +537,17 @@ export default function Details(props){
         },
         {
           title: texts.autoStartup,
-          value: guest.auto_start ? texts.on : texts.off,
+          value: (
+            <div>
+              {texts.disable}
+              <Switch
+                checked={guest.auto_start}
+                onChange={handleAutoStartChanged}
+                color="primary"
+              />
+              {texts.enable}
+            </div>
+          ),
         },
         {
           title: texts.pool,

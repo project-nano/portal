@@ -1,13 +1,13 @@
 import axios from "axios";
 import { getLoggedSession } from 'utils.js';
 
-// const apiRoot = 'http://192.168.3.224:5870/api/v1';
+const apiRoot = 'http://192.168.3.224:5870/api/v1';
 // const apiRoot = 'http://192.168.3.26:5870/api/v1';
 // const apiRoot = 'http://192.168.1.111:5870/api/v1';
 // const apiRoot = 'http://192.168.1.64:5870/api/v1';
-const apiRoot = '/api/v1';
+// const apiRoot = '/api/v1';
 const HeaderNanoSession = "Nano-Session";
-const currentVersion = '1.3.0';
+const currentVersion = '1.3.1';
 
 export function getCurrentVersion(){
   return currentVersion;
@@ -405,6 +405,30 @@ export function removeAddressRange(poolName, rangeType, startAddress, onSuccess,
 }
 
 //Instances
+export function searchGuests(limit, offset, poolName, cellName, keyword, onSuccess, onFail){
+  const url = `/search/guests/`;
+  const defaultLimit = 20;
+  var request = {};
+  if (limit) {
+    request.limit = limit;
+  }else {
+    request.limit = defaultLimit;
+  }
+  if (offset){
+    request.offset = offset;
+  }
+  if (poolName){
+    request.pool = poolName;
+  }
+  if (cellName){
+    request.cell = cellName;
+  }
+  if (keyword){
+    request.keyword = keyword;
+  }
+  postRequest(url, request, onSuccess, onFail);
+}
+
 export function searchInstances(poolName, cellName, onSuccess, onFail){
   if (!poolName){
     onFail('must specify pool name');
@@ -620,6 +644,16 @@ export function modifyInstanceMemory(instanceID, sizeInBytes, onSuccess, onFail)
     memory: sizeInBytes,
   }
   putRequest('/guests/' + instanceID + '/memory', request, onOperateSuccess, onFail);
+}
+
+export function setAutoStart(instanceID, enable, onSuccess, onFail){
+  const onOperateSuccess = () =>{
+    onSuccess(instanceID);
+  }
+  const request = {
+    enable: enable,
+  }
+  putRequest('/guests/' + instanceID + '/auto_start', request, onOperateSuccess, onFail);
 }
 
 export function resizeInstanceDisk(instanceID, index, sizeInBytes, onSuccess, onFail){

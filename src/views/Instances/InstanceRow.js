@@ -366,7 +366,7 @@ export default function InstanceRow(props){
         {rowHeader}
       </TableCell>
       <TableCell className={tableClasses.tableCell}>
-        {instance.cell}
+        {instance.host? instance.host: instance.cell}
       </TableCell>
       <TableCell className={tableClasses.tableCell}>
         {addressLabel}

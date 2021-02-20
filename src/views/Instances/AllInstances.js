@@ -2,11 +2,13 @@ import React from "react";
 // @material-ui/core components
 import { useLocation } from "react-router-dom";
 import { makeStyles } from "@material-ui/core/styles";
+import Pagination from '@material-ui/lab/Pagination';
 import Skeleton from '@material-ui/lab/Skeleton';
 import AddIcon from '@material-ui/icons/Add';
 import Divider from '@material-ui/core/Divider';
 import Box from '@material-ui/core/Box';
 import Checkbox from '@material-ui/core/Checkbox';
+import TextField from '@material-ui/core/TextField';
 import MenuItem from '@material-ui/core/MenuItem';
 import Select from '@material-ui/core/Select';
 import InputLabel from '@material-ui/core/InputLabel';
@@ -41,7 +43,7 @@ import BatchCreateDialog from "views/Instances/BatchCreateDialog";
 
 import dashboardStyles from "assets/jss/material-dashboard-react/views/dashboardStyle.js";
 import { getLoggedSession, logoutSession, redirectToLogin } from 'utils.js';
-import { searchInstances, queryComputeCellsInPool, getAllComputePools, writeLog } from "nano_api.js";
+import { searchGuests, queryComputeCellsInPool, getAllComputePools, writeLog } from "nano_api.js";
 
 const styles = {
   ...dashboardStyles,
@@ -86,6 +88,8 @@ const i18n = {
     disabled: 'Disabled',
     offline: "Offline",
     allCells: 'All Cells',
+    keyword: 'Key Word',
+    search: 'Search',
   },
   'cn':{
     createButton: "创建云主机",
@@ -108,10 +112,13 @@ const i18n = {
     disabled: '已禁用',
     offline: "离线",
     allCells: '所有节点',
+    keyword: '关键词',
+    search: '搜索',
   }
 }
 
 export default function AllInstances(props){
+    const recordPerPage = 10;
     const classes = useStyles();
     const location = useLocation();
     const queryParams = new URLSearchParams(location.search);
@@ -127,6 +134,10 @@ export default function AllInstances(props){
     })
     const [ pools, setPools ] = React.useState([]);
     const [ cells, setCells ] = React.useState([]);
+    const [ offset, setOffset] = React.useState(0);
+    const [ keyword, setKeyword] = React.useState('');
+    const [ keywordInput, setKeywordInput] = React.useState('');
+    const [ totalCount, setTotalCount ] = React.useState(0);
 
     //for dialog
     const [ createDialogVisible, setCreateDialogVisible ] = React.useState(false);
@@ -165,14 +176,20 @@ export default function AllInstances(props){
       setTimeout(closeNotify, notifyDuration);
     };
 
+    const onPageChanged = (e, page) => {
+      setOffset((page - 1) * recordPerPage);
+    }
+
     const reloadAllInstances = React.useCallback(() => {
       const onLoadFail = (err) =>{
         showErrorMessage(err);
         logoutSession();
       }
-      const onLoadSuccess = dataList => {
+      const onLoadSuccess = r => {
+        var dataList = r.result;
         var updated = checkedMap;
         var modified = false;
+        setTotalCount(r.total);
         if (!dataList){
           setInstanceList([]);
           if (0 !== updated.size){
@@ -211,8 +228,8 @@ export default function AllInstances(props){
           setCheckedMap(new Map(updated));
         }
       }
-      searchInstances(scope.pool, scope.cell, onLoadSuccess, onLoadFail);
-    }, [scope, checkedMap, showErrorMessage]);
+      searchGuests(recordPerPage, offset, scope.pool, scope.cell, keyword, onLoadSuccess, onLoadFail);
+    }, [scope, checkedMap, showErrorMessage, offset, keyword]);
 
     //delete
     const showDeleteDialog = (instanceID) =>{
@@ -503,34 +520,71 @@ export default function AllInstances(props){
       }else{
         nameHeader = texts.name;
       }
+      let pagination;
+      if (totalCount > recordPerPage){
+        let totalPages, currentPage;
+        if (0 === totalCount % recordPerPage){
+          totalPages = totalCount / recordPerPage;
+        }else{
+          totalPages = (totalCount - totalCount % recordPerPage) / recordPerPage + 1;
+        }
+        if (0 === offset % recordPerPage){
+          currentPage = offset / recordPerPage + 1;
+        }else{
+          currentPage = (offset - offset % recordPerPage ) / recordPerPage + 1;
+        }
+        pagination = (
+          <Box justifyContent="center" display="flex">
+            <Box m={1}>
+            <Pagination
+                count={totalPages}
+                page={currentPage}
+                onChange={onPageChanged}
+                color='primary'
+                boundaryCount={3}
+                // hidePrevButton={1 === currentPage}
+                // hideNextButton={currentPage === totalPages}
+                showFirstButton
+                showLastButton
+                />
+            </Box>
+          </Box>
+        );
+      }else{
+        pagination = <div/>;
+      }
+
       content = (
-        <OperableTable
-          color="primary"
-          headers={[nameHeader, texts.cell, texts.address, texts.core, texts.memory, texts.disk, texts.status, texts.operates]}
-          rows={
-            instanceList.map(instance =>{
-              const instanceID = instance.id;
-              return (
-                <InstanceRow
-                  key={instance.id}
-                  instance={instance}
-                  lang={lang}
-                  checked={checkedMap && checkedMap.has(instanceID) ? checkedMap.get(instanceID): false}
-                  checkable={batchMode}
-                  onCheckStatusChanged={handleInstanceChecked}
-                  onNotify={showNotifyMessage}
-                  onError={showErrorMessage}
-                  onDelete={showDeleteDialog}
-                  onMediaStart={showMediaStartDialog}
-                  onInsertMedia={showInsertMediaDialog}
-                  onResetSystem={showResetSystemDialog}
-                  onBuildImage={showBuildImageDialog}
-                  onStatusChange={onStatusChange}
-                  onMigrateInstance={showMigrateDialog}
-                  />
-              )
-            })}
-          />
+        <div>
+          <OperableTable
+            color="primary"
+            headers={[nameHeader, texts.cell, texts.address, texts.core, texts.memory, texts.disk, texts.status, texts.operates]}
+            rows={
+              instanceList.map(instance =>{
+                const instanceID = instance.id;
+                return (
+                  <InstanceRow
+                    key={instance.id}
+                    instance={instance}
+                    lang={lang}
+                    checked={checkedMap && checkedMap.has(instanceID) ? checkedMap.get(instanceID): false}
+                    checkable={batchMode}
+                    onCheckStatusChanged={handleInstanceChecked}
+                    onNotify={showNotifyMessage}
+                    onError={showErrorMessage}
+                    onDelete={showDeleteDialog}
+                    onMediaStart={showMediaStartDialog}
+                    onInsertMedia={showInsertMediaDialog}
+                    onResetSystem={showResetSystemDialog}
+                    onBuildImage={showBuildImageDialog}
+                    onStatusChange={onStatusChange}
+                    onMigrateInstance={showMigrateDialog}
+                    />
+                )
+              })}
+            />
+          {pagination}
+        </div>
       );
     }
 
@@ -635,6 +689,19 @@ export default function AllInstances(props){
       </Box>
     );
 
+    const searchInput = (
+      <Box m={0} pb={2}>
+        <TextField
+          value={keywordInput}
+          label={texts.keyword}
+          margin="normal"
+          fullWidth
+        />
+        <Button size="sm" color='info' round>
+          {texts.search}
+        </Button>
+      </Box>
+    );
     var batchTargets = [];
     if(checkedMap){
       checkedMap.forEach((checked, id) =>{
@@ -648,21 +715,6 @@ export default function AllInstances(props){
     return (
       <GridContainer>
         <GridItem xs={12}>
-          <GridContainer>
-            <GridItem xs={6} sm={4} md={2}>
-              {poolSelector}
-            </GridItem>
-            <GridItem xs={6} sm={4} md={2}>
-              {cellSelector}
-            </GridItem>
-          </GridContainer>
-        </GridItem>
-        <GridItem xs={12}>
-          <Box mt={3} mb={3}>
-            <Divider/>
-          </Box>
-        </GridItem>
-        <GridItem xs={12}>
           <Box display='flex'>
             {
               buttonProperties.map(({label, color, icon, onClick}, key) =>(
@@ -674,6 +726,27 @@ export default function AllInstances(props){
                 </Box>
               ))
             }
+          </Box>
+        </GridItem>
+        <GridItem xs={12}>
+          <Box mt={3} mb={3}>
+            <Divider/>
+          </Box>
+        </GridItem>
+        <GridItem xs={12}>
+          <Box ml={1}>
+          <GridContainer>
+            <GridItem xs={6} sm={4} md={2}>
+              {poolSelector}
+            </GridItem>
+            <GridItem xs={6} sm={4} md={2}>
+              {cellSelector}
+            </GridItem>
+            <GridItem xs={12} sm={8} md={5}>
+              {searchInput}
+            </GridItem>
+
+          </GridContainer>
           </Box>
         </GridItem>
         <GridItem xs={12} sm={12} md={12}>
