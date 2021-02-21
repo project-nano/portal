@@ -88,8 +88,10 @@ const i18n = {
     disabled: 'Disabled',
     offline: "Offline",
     allCells: 'All Cells',
+    allPools: 'All Pools',
     keyword: 'Key Word',
     search: 'Search',
+    notMatch: 'No instance match keyword: ',
   },
   'cn':{
     createButton: "创建云主机",
@@ -112,8 +114,10 @@ const i18n = {
     disabled: '已禁用',
     offline: "离线",
     allCells: '所有节点',
+    allPools: '所有资源池',
     keyword: '关键词',
     search: '搜索',
+    notMatch: '没有云主机匹配关键词: ',
   }
 }
 
@@ -178,6 +182,24 @@ export default function AllInstances(props){
 
     const onPageChanged = (e, page) => {
       setOffset((page - 1) * recordPerPage);
+    }
+
+    const handleKeywordChange = e =>{
+      var value = e.target.value;
+      setKeywordInput(value);
+    }
+
+    const clearState = () => {
+      setKeyword('');
+      setKeywordInput('');
+      setOffset(0);
+    }
+
+    const doSearch = () =>{
+      setKeywordInput('');//clear input field
+      setKeyword(keywordInput);
+      setOffset(0);
+      reloadAllInstances();
     }
 
     const reloadAllInstances = React.useCallback(() => {
@@ -401,6 +423,7 @@ export default function AllInstances(props){
     const exitBatchMode = () => {
       setBatchMode(false);
     }
+
     const handleInstanceChecked = (checked, instanceID) =>{
       var checkedStatus = new Map(checkedMap);
       checkedStatus.set(instanceID, checked);
@@ -428,6 +451,7 @@ export default function AllInstances(props){
           pool: poolName,
           cell: '',
         });
+        clearState();
       }
       queryComputeCellsInPool(poolName, onQueryCellsSuccess, showErrorMessage);
     }
@@ -438,29 +462,14 @@ export default function AllInstances(props){
         ...previous,
         cell: cellName,
       }));
+      clearState();
     }
 
     React.useEffect(() =>{
       if (!initialed){
         //initial
-        var currentPool;
-        var poolList = [];
-        var cellList = [];
-
-        const onQueryCellsSuccess = dataList => {
-          dataList.forEach( cell => {
-            cellList.push(cell);
-          });
-          setPools(poolList);
-          setCells(cellList);
-          setScope({
-            pool: defaultPoolName? defaultPoolName : currentPool,
-            cell: defaultCellName? defaultCellName : '',
-          });
-          setInitialed(true);
-        }
-
         const onQueryPoolsSuccess = dataList => {
+          var poolList = [];
           dataList.forEach( pool => {
             poolList.push(pool.name);
           })
@@ -468,8 +477,13 @@ export default function AllInstances(props){
             showErrorMessage('no compute pools available');
             return;
           }
-          currentPool = poolList[0];
-          queryComputeCellsInPool(currentPool, onQueryCellsSuccess, showErrorMessage);
+          setPools(poolList);
+          setCells([]);
+          setScope({
+            pool: defaultPoolName? defaultPoolName : '',
+            cell: defaultCellName? defaultCellName : '',
+          });
+          setInitialed(true);
         }
         getAllComputePools(onQueryPoolsSuccess, showErrorMessage);
 
@@ -501,7 +515,12 @@ export default function AllInstances(props){
     if (!initialed || !instanceList){
       content = <Skeleton variant="rect" style={{height: '10rem'}}/>;
     }else if (0 === instanceList.length){
-      content = <Info>{texts.noResource}</Info>;
+      if ('' !== keyword){
+        content = <Box textAlign="center"><Info>{texts.notMatch + keyword}</Info></Box>;
+      }else{
+        content = <Box textAlign="center"><Info>{texts.noResource}</Info></Box>;
+      }
+
     }else{
       let nameHeader;
       if(batchMode){
@@ -634,6 +653,44 @@ export default function AllInstances(props){
       );
     }
 
+    var poolOptions = [
+      {
+        label: texts.allPools,
+        value: '',
+      }
+    ];
+
+    pools.forEach( poolName => {
+      poolOptions.push({
+        label: poolName,
+        value: poolName,
+      })
+    });
+
+    var cellOptions = [
+      {
+        label: texts.allCells,
+        value: '',
+      }
+    ];
+
+    cells.forEach( cell =>{
+      var label = cell.name;
+      if (cell.address){
+        label += '('+ cell.address +')';
+      }
+      if (!cell.alive){
+        label += '-' + texts.offline;
+      }
+      if (!cell.enabled){
+        label += '-' + texts.disabled;
+      }
+      cellOptions.push({
+        label: label,
+        value: cell.name,
+      })
+    });
+
     const poolSelector = (
       <Box m={0} pb={2}>
         <InputLabel htmlFor="pool" className={classes.cardCategory}>
@@ -647,10 +704,10 @@ export default function AllInstances(props){
             id: 'pool',
           }}
           fullWidth
-        >
+          >
           {
-            pools.map(poolName => (
-              <MenuItem value={poolName} key={poolName}>{poolName}</MenuItem>
+            poolOptions.map( (option, key) => (
+              <MenuItem value={option.value} key={key}>{option.label}</MenuItem>
             ))
           }
         </Select>
@@ -668,40 +725,16 @@ export default function AllInstances(props){
             id: 'cell',
           }}
           fullWidth
-        >
-          <MenuItem value='' selected>{texts.allCells}</MenuItem>
+          >
           {
-            cells.map(cell => {
-              var label = cell.name;
-              if (cell.address){
-                label += '('+ cell.address +')';
-              }
-              if (!cell.alive){
-                label += '-' + texts.offline;
-              }
-              if (!cell.enabled){
-                label += '-' + texts.disabled;
-              }
-              return <MenuItem value={cell.name} key={cell.name}>{label}</MenuItem>
-            })
+            cellOptions.map( (option, key) => (
+              <MenuItem value={option.value} key={key}>{option.label}</MenuItem>
+            ))
           }
         </Select>
       </Box>
     );
 
-    const searchInput = (
-      <Box m={0} pb={2}>
-        <TextField
-          value={keywordInput}
-          label={texts.keyword}
-          margin="normal"
-          fullWidth
-        />
-        <Button size="sm" color='info' round>
-          {texts.search}
-        </Button>
-      </Box>
-    );
     var batchTargets = [];
     if(checkedMap){
       checkedMap.forEach((checked, id) =>{
@@ -711,6 +744,7 @@ export default function AllInstances(props){
       });
       batchTargets.sort();
     }
+
 
     return (
       <GridContainer>
@@ -736,20 +770,36 @@ export default function AllInstances(props){
         <GridItem xs={12}>
           <Box ml={1}>
           <GridContainer>
-            <GridItem xs={6} sm={4} md={2}>
-              {poolSelector}
+            <GridItem xs={5} sm={3} md={2}>
+              <Box pt={1}>
+                {poolSelector}
+              </Box>
             </GridItem>
             <GridItem xs={6} sm={4} md={2}>
-              {cellSelector}
+              <Box pt={1}>
+                {cellSelector}
+              </Box>
             </GridItem>
-            <GridItem xs={12} sm={8} md={5}>
-              {searchInput}
+            <GridItem xs={10} sm={6} md={4}>
+              <TextField
+                value={keywordInput}
+                label={texts.keyword}
+                onChange={handleKeywordChange}
+                margin="normal"
+                fullWidth
+              />
             </GridItem>
-
+            <GridItem xs={2} sm={1}>
+              <Box pt={4}>
+                <Button size="sm" color='info' round onClick={doSearch}>
+                  {texts.search}
+                </Button>
+              </Box>
+            </GridItem>
           </GridContainer>
           </Box>
         </GridItem>
-        <GridItem xs={12} sm={12} md={12}>
+        <GridItem xs={12}>
           <Card>
             <CardHeader color="primary">
               <h4 className={classes.cardTitleWhite}>{texts.tableTitle}</h4>

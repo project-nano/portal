@@ -429,7 +429,7 @@ export default function InstancesInScope(props){
     if (null === instanceList){
       content = <Skeleton variant="rect" style={{height: '10rem'}}/>;
     }else if (0 === instanceList.length){
-      content = <Info>{texts.noResource}</Info>;
+      content = <Box textAlign="center"><Info>{texts.noResource}</Info></Box>;
     }else{
       let nameHeader;
       if(batchMode){

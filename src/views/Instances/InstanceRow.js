@@ -314,6 +314,17 @@ export default function InstanceRow(props){
       </Tooltip>
     );
     statusIcon = [stoppedIcon];
+    if (instance.auto_start){
+      statusIcon.push((
+        <Tooltip
+          title={texts.autoStartup}
+          placement="top"
+          key={texts.autoStartup}
+          >
+          <AllInclusiveIcon className={fontClasses.infoText}/>
+        </Tooltip>
+      ));
+    }
     operators = [startOperator, startWithMediaOperator, snapshotOperator,
       createImageOperator, resetSystemOperator, deleteOperator,
       migrateOperator, monitorOperator, detailOperator, securityOperator];

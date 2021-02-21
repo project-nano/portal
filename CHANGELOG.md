@@ -5,6 +5,7 @@
 ### Added
 
 - Set auto start in guest detail
+- Search and pagination in instance list
 
 ### Changed
 

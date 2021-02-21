@@ -16,7 +16,7 @@ import FormGroup from '@material-ui/core/FormGroup';
 import Checkbox from '@material-ui/core/Checkbox';
 import Slider from '@material-ui/core/Slider';
 
-function InputComponent(props){
+export function InputComponent(props){
   var { type, label, value, onChange, required, oneRow, disabled, options,
     on, off, rows, step, maxStep, minStep, marks, helper,
     ...rest } = props;
