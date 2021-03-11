@@ -22,13 +22,16 @@ import SingleRow from "components/Grid/SingleRow.js";
 import InputList from "components/CustomInput/InputList";
 import CustomDialog from "components/Dialog/CustomDialog.js";
 import { getAllComputePools, searchDiskImages, createInstance,
-  getInstanceConfig, querySystemTemplates, searchSecurityPolicyGroups } from 'nano_api.js';
+  getInstanceConfig, querySystemTemplates, searchSecurityPolicyGroups, queryComputeCellsInPool, getNetworkPool } from 'nano_api.js';
 
 const i18n = {
   'en':{
     title: 'Create Instance',
     name: 'Instance Name',
     resourcePool: 'Resource Pool',
+    selectInstance: 'Select Host',
+    selectNetwork: 'Select Network',
+    inputIp: 'Input Ip',
     core: 'Core',
     memory: 'Memory',
     systemDisk: 'System Disk Size',
@@ -63,6 +66,9 @@ const i18n = {
     title: '创建云主机',
     name: '云主机名称',
     resourcePool: '计算资源池',
+    selectInstance: '选择宿主机',
+    selectNetwork: '选择地址段',
+    inputIp: '输入地址',
     core: '核心数',
     memory: '内存',
     systemDisk: '系统磁盘容量',
@@ -122,6 +128,9 @@ export default function CreateDialog(props){
     iops: 0,
     inbound: 0,
     outbound: 0,
+    cell: '',
+    network_address: '',
+    network: ''
   };
   const [ initialed, setInitialed ] = React.useState(false);
   const [ creating, setCreating ] = React.useState(false);
@@ -130,6 +139,9 @@ export default function CreateDialog(props){
   const [ prompt, setPrompt ] = React.useState('');
   const [ mounted, setMounted ] = React.useState(false);
   const [ request, setRequest ] = React.useState(defaultValues);
+  const [ cells, setCells ] = React.useState([]);
+  const [ networkAddress, setNetworkAddress ] = React.useState(null);
+  const [ networkAddressList, setNetworkAddressList ] = React.useState([]);
   const [ options, setOptions ] = React.useState({
     pools: [],
     images: [],
@@ -195,6 +207,24 @@ export default function CreateDialog(props){
     getInstanceConfig(instanceID, onCreateSuccess, onCreateFail, onCreating);
   }
 
+  const ipToNumber = (ip) => {  
+    var numbers = ip.split(".");  
+    return parseInt(numbers[0])*256*256*256 +   
+    parseInt(numbers[1])*256*256 +   
+    parseInt(numbers[2])*256 +   
+    parseInt(numbers[3]);
+  } 
+
+  const isValidNetworkAddress = (ip) => {
+    const networks = request.network.split('-')
+    const start = networks[0]
+    const end = networks[1]
+    const startIpNumber = ipToNumber(start)
+    const endIpNumber = ipToNumber(end)
+    const ipNumber = ipToNumber(ip)
+    return ipNumber >= startIpNumber && ipNumber <= endIpNumber
+  }
+
   const handleConfirm = () =>{
     setPrompt('');
     setOperatable(false);
@@ -205,6 +235,24 @@ export default function CreateDialog(props){
     if (!request.pool){
       onCreateFail('must specify target pool');
       return;
+    }
+    const network_address = request.network_address.trim()
+    if(request.network=== '' && request.network_address !=='') {
+      onCreateFail('Please select the address range first, then enter the address.');
+      return;
+    }
+    if(request.network_address && request.network_address !=='' && request.network !== ''){
+      if(!isValidNetworkAddress(network_address)){
+        onCreateFail('The address entered must be within the range of the selected address segment.');
+        return; 
+      }
+      if(networkAddress.allocated && networkAddress.allocated.length > 0){
+        const allocatedAddress = networkAddress.allocated
+        if(allocatedAddress.find(item=> item.address === network_address)) {
+          onCreateFail('The address entered already exists.');
+          return; 
+        }
+      }
     }
     var cores = Number(request.cores);
     if(Number.isNaN(cores)){
@@ -254,7 +302,7 @@ export default function CreateDialog(props){
       receive_speed: request.inbound * Mbit,
       send_speed: request.outbound * Mbit,
     };
-    createInstance(request.name, request.pool, cores, memory, disks,
+    createInstance(request.name, request.pool, request.cell, network_address, cores, memory, disks,
       request.auto_start, fromImage, systemVersion, modules,
       cloudInit, qos, request.security_policy, onCreateAccept,
       onCreateSuccess, onCreateFail);
@@ -265,6 +313,13 @@ export default function CreateDialog(props){
       return;
     }
     var value = e.target.value
+    if(name === 'pool') {
+      const pool_item = options.pools.find(val=> val.value === value)
+      getAllInstances(value)
+      if(pool_item) {
+        getNetworks(pool_item.network)
+      }
+    }
     setRequest(previous => ({
       ...previous,
       [name]: value,
@@ -371,10 +426,11 @@ export default function CreateDialog(props){
       if(!mounted){
         return;
       }
-      dataList.forEach(({name})=>{
+      dataList.forEach(({name, network})=>{
         poolOptions.push({
           label: name,
           value: name,
+          network: network
         });
       })
 
@@ -386,6 +442,37 @@ export default function CreateDialog(props){
       setMounted(false);
     }
   }, [mounted, open, texts.blankSystem, onCreateFail]);
+
+  const getAllInstances = (poolValue) => {
+    const onLoadSuccess = dataList => {
+      if (dataList){
+        const datas = dataList.map(item=> {
+          return {
+            value: item.name,
+            label: `${item.name}(${item.address})`
+          }
+        })
+        setCells([{value: '', label: '无' }, ...datas]);
+      }
+    }
+    queryComputeCellsInPool(poolValue, onLoadSuccess, onCreateFail);
+  };
+
+  const getNetworks = (networkValue)=> {
+    const onLoadSuccess = data => {
+      if (data){
+        setNetworkAddress(data)
+        const ranges = data.ranges.map(item=> {
+          return {
+            label: `${item.start}-${item.end}`,
+            value: `${item.start}-${item.end}`
+          }
+        })
+        setNetworkAddressList([{value: '', label: '无' }, ...ranges])
+      }
+    }
+    getNetworkPool(networkValue, onLoadSuccess, onCreateFail);
+  };
 
   //begin render
   var buttons = [{
@@ -604,19 +691,57 @@ export default function CreateDialog(props){
         required: true,
         xs: 12,
         sm: 6,
-        md: 4,
+        md: 5,
       },
       {
         type: "select",
         label: texts.resourcePool,
         onChange: handleRequestPropsChanged('pool'),
         value: request.pool,
-        oneRow: true,
+        oneRow: false,
         options: options.pools,
         required: true,
         xs: 10,
-        sm: 4,
-        md: 3,
+        sm: 6,
+        md: 5,
+        style: {'marginRight': '20px'}
+      },
+      {
+        type: "select",
+        label: texts.selectInstance,
+        onChange: handleRequestPropsChanged('cell'),
+        value: request.cell,
+        oneRow: false,
+        options: cells,
+        required: true,
+        xs: 10,
+        sm: 6,
+        md: 5,
+      },
+      {
+        type: "select",
+        label: texts.selectNetwork,
+        onChange: handleRequestPropsChanged('network'),
+        value: request.network,
+        oneRow: false,
+        options: networkAddressList,
+        required: true,
+        xs: 10,
+        sm: 6,
+        md: 5,
+        style: {'marginRight': '20px'}
+      },
+      {
+        type: "text",
+        label: texts.inputIp,
+        onChange: handleRequestPropsChanged('network_address'),
+        value: request.network_address,
+        oneRow: false,
+        required: false,
+        xs: 10,
+        sm: 6,
+        md: 5,
+        style: {'marginTop': '-16px'}
       },
       {
         type: "radio",
