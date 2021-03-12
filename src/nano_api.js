@@ -469,7 +469,7 @@ export function getInstanceStatus(id, onSuccess, onFail, onCreating){
   getRequestWithStatus('/instances/' + id, onGetSuccess, onFail);
 }
 
-export function createInstance(name, pool, cores, memory, disks, autoStartup,
+export function createInstance(name, pool, cell, network_address, cores, memory, disks, autoStartup,
   fromImage, systemVersion, modules, cloudInit, qos, security_policy, onAccept, onSuccess, onFail){
     var session = getLoggedSession();
     if (null === session){
@@ -481,6 +481,8 @@ export function createInstance(name, pool, cores, memory, disks, autoStartup,
       owner: session.user,
       group: session.group,
       pool: pool,
+      cell: cell,
+      network_address: network_address,
       cores: cores,
       memory: memory,
       disks: disks,
