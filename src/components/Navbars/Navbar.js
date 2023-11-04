@@ -54,10 +54,11 @@ export default function Header(props) {
     [" " + classes[color]]: color
   });
 
+  let currentYear = new Date().getFullYear();
   const version = (
     <Box mr={2}>
       <Typography component='span'>
-        {'Project Nano ' + getCurrentVersion() + ' © 2018~2020'}
+        {`Project Nano ${getCurrentVersion()} © 2018~${currentYear}`}
       </Typography>
     </Box>
   );

@@ -1,5 +1,17 @@
 # Change Log
 
+## [1.4.0] - 2023-11-02
+
+### Added
+
+- Prompt on login page when system error
+- Add service.host/service.port to 'package.json' to configure CORS backend connnection
+
+### Changed 
+
+- Migrate to yarn
+- Copyright updated to current year
+
 ## [1.3.1] - 2021-02-22
 
 ### Added

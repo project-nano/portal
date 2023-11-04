@@ -19,21 +19,21 @@ import LanguageSelector from "components/Language/Selector.js";
 import { loginUser, writeLog, getSystemStatus } from 'nano_api.js';
 import { saveLoggedSession } from 'utils.js';
 
-const getClasses = makeStyles(()=>({
-  background:{
+const getClasses = makeStyles(() => ({
+  background: {
     backgroundImage: "url(" + bgImage + ")",
     height: '100vh',
   }
 }));
 
 const i18n = {
-  'cn':{
+  'cn': {
     title: 'Nano管理门户',
     user: '用户名',
     password: '密码',
     login: '登录',
   },
-  'en':{
+  'en': {
     title: 'Nano Web Portal',
     user: 'User',
     password: 'Password',
@@ -41,25 +41,25 @@ const i18n = {
   }
 };
 
-export default function Login(props){
+export default function Login(props) {
   const { lang, setLang } = props;
   const texts = i18n[lang];
   const classes = getClasses();
-  const [ request, setRequest ] = React.useState({
+  const [request, setRequest] = React.useState({
     user: '',
     password: '',
     nonce: 'stub',
     type: 'manager',
   });
-  const [ errorMessage, setError ] = React.useState('');
-  const [ systemReady, setSystemReady ] = React.useState(true);
-  const [ initialed, setInitialed ] = React.useState(false);
-  const [ isLogged, setLogged ] = React.useState(false);
+  const [errorMessage, setError] = React.useState('');
+  const [systemReady, setSystemReady] = React.useState(true);
+  const [initialed, setInitialed] = React.useState(false);
+  const [isLogged, setLogged] = React.useState(false);
 
-  const notifyError = React.useCallback(message =>{
+  const notifyError = React.useCallback(message => {
     const notifyElapsed = 5000;
     setError(message);
-    setTimeout(()=>{
+    setTimeout(() => {
       setError('');
     }, notifyElapsed);
   }, [setError]);
@@ -72,11 +72,15 @@ export default function Login(props){
     }));
   };
 
-  const onLoginFail = React.useCallback(msg =>{
+  const onLoginFail = React.useCallback(msg => {
     notifyError(msg);
   }, [notifyError]);
 
-  const onLoginSuccess = payload =>{
+  const onSystemError = msg =>{
+    setError(msg);
+  };
+
+  const onLoginSuccess = payload => {
     var session = {
       id: payload.session,
       timeout: payload.timeout,
@@ -88,53 +92,67 @@ export default function Login(props){
       type: request.type,
     }
     saveLoggedSession(session);
-    if (!isLogged){
-        setLogged(true);
-        writeLog('login success');
+    if (!isLogged) {
+      setLogged(true);
+      writeLog('login success');
     }
   };
 
-  const handleLoginClick = () =>{
+  const handleLoginClick = () => {
     loginUser(request.user, request.password, onLoginSuccess, onLoginFail);
   };
 
-  React.useEffect(() =>{
-    if(initialed){
+  React.useEffect(() => {
+    if (initialed) {
       return;
     }
     const onQueryStatusSuccess = result => {
-      if (!result.ready){
+      if (!result.ready) {
         setSystemReady(false);
       }
       setInitialed(true);
     }
 
-    getSystemStatus(onQueryStatusSuccess, onLoginFail);
+    getSystemStatus(onQueryStatusSuccess, onSystemError);
   }, [initialed, onLoginFail]);
 
   let content, button;
-  if (!initialed){
-    content = <Skeleton variant="rect" style={{height: '10rem'}}/>;
-  } else if (!systemReady){
-    return <Redirect to='/initial'/>;
-  } else if (isLogged){
+  if (!initialed) {
+    if (errorMessage) {
+      let prompt;
+      if ('en' === lang) {
+        prompt = `System check failed, Please check backend service status\r\n${errorMessage}`;
+      } else {
+        prompt = `系统检测失败，请检查后台服务状态\r\n${errorMessage}`;
+      }
+      content = (
+        <GridItem xs={12}>
+          <SnackbarContent message={prompt} color="warning" />
+        </GridItem>
+      )
+    } else {
+      content = <Skeleton variant="rect" style={{ height: '10rem' }} />;
+    }
+  } else if (!systemReady) {
+    return <Redirect to='/initial' />;
+  } else if (isLogged) {
     const PreviousKey = "previous";
     var params = new URLSearchParams(window.location.search);
-    if (params.has(PreviousKey)){
-      return <Redirect to={decodeURIComponent(params.get(PreviousKey))}/>;
-    }else{
-      return <Redirect to='/admin'/>;
+    if (params.has(PreviousKey)) {
+      return <Redirect to={decodeURIComponent(params.get(PreviousKey))} />;
+    } else {
+      return <Redirect to='/admin' />;
     }
-  }else{
+  } else {
     let errorBar;
-    if (errorMessage){
+    if (errorMessage) {
       errorBar = (
         <GridItem xs={12}>
-          <SnackbarContent message={errorMessage} color="danger"/>
+          <SnackbarContent message={errorMessage} color="danger" />
         </GridItem>
       );
-    }else{
-      errorBar = <GridItem xs={12}/>;
+    } else {
+      errorBar = <GridItem xs={12} />;
     }
     button = <Button color="info" onClick={handleLoginClick}>{texts.login}</Button>;
     content = (
@@ -167,8 +185,8 @@ export default function Login(props){
         <GridItem xs={12}>
           <Box alignItems='center' display='flex' m={1}>
             {button}
-            <Box flexGrow={1}/>
-            <LanguageSelector lang={lang} setLang={setLang}/>
+            <Box flexGrow={1} />
+            <LanguageSelector lang={lang} setLang={setLang} />
           </Box>
         </GridItem>
         <GridItem xs={12}>
@@ -177,10 +195,10 @@ export default function Login(props){
       </Grid>
     );
   }
-  return(
+  return (
     <Box component='div' className={classes.background}>
       <Container maxWidth='lg'>
-        <Grid container justify="center">
+        <Grid container justifyContent="center">
           <Grid item xs={10} sm={6} md={4}>
             <Box mt={20} p={0}>
               <Card>

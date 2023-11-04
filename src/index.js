@@ -17,7 +17,7 @@
 */
 import React from "react";
 import ReactDOM from "react-dom";
-import createMuiTheme from '@material-ui/core/styles/createMuiTheme';
+import {createTheme} from '@material-ui/core/styles';
 import ThemeProvider from '@material-ui/styles/ThemeProvider';
 
 import { createBrowserHistory } from "history";
@@ -62,7 +62,7 @@ class ErrorBoundary extends React.Component {
 }
 
 const history = createBrowserHistory();
-const mainTheme = createMuiTheme({
+const mainTheme = createTheme({
   palette: {
     primary: {
       light: primaryColor[1],
