@@ -11,6 +11,8 @@
 
 - Migrate to yarn
 - Copyright updated to current year
+- Only allow '.iso' files to upload for media images
+- Only allow '.qcow2' files to upload for disk images
 
 ## [1.3.1] - 2021-02-22
 

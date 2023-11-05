@@ -51,6 +51,14 @@ export default function UploadDialog(props){
 
   const texts = i18n[lang];
   const title = texts.title;
+  const clearPrompt = () =>{
+    setPrompt('');
+  }
+
+  const showPrompt = msg =>{
+    setPrompt(msg);
+  }
+
   const onUploadFail = React.useCallback(msg =>{
     if(!mounted){
       return;
@@ -169,11 +177,27 @@ export default function UploadDialog(props){
     if(!mounted){
       return;
     }
+    clearPrompt();
+
+    // only '.qcow2' file is allowed
     var file = e.target.files[0];
-    setRequest(previous => ({
-      ...previous,
-      [name]: file,
-    }));
+    e.preventDefault();
+    if (file && file.name) {
+      let ext = file.name.split('.').pop().toLowerCase();
+      if (ext === 'qcow2') {
+        setRequest(previous => ({
+          ...previous,
+          [name]: file,
+        }));
+        return;
+      }
+    }
+    //invalid file
+    if ('en' === lang){
+      showPrompt('invalid file, only qcow2 file is allowed');
+    }else{
+      showPrompt('无效文件，只允许支持qcow2格式');
+    }
   };
 
   React.useEffect(()=>{

@@ -8,7 +8,7 @@ import CustomDialog from "components/Dialog/CustomDialog.js";
 import { createMediaImage, deleteMediaImage, uploadMediaImage } from 'nano_api.js';
 
 const i18n = {
-  'en':{
+  'en': {
     title: 'Upload New Image',
     name: 'Image Name',
     description: 'Description',
@@ -18,7 +18,7 @@ const i18n = {
     cancel: 'Cancel',
     confirm: 'Upload',
   },
-  'cn':{
+  'cn': {
     title: '上传新镜像',
     name: '镜像名称',
     description: '描述',
@@ -30,7 +30,7 @@ const i18n = {
   },
 }
 
-export default function UploadDialog(props){
+export default function UploadDialog(props) {
   const defaultValues = {
     name: '',
     description: '',
@@ -38,21 +38,21 @@ export default function UploadDialog(props){
     file: null,
   };
   const { lang, open, onSuccess, onCancel } = props;
-  const [ initialed, setInitialed ] = React.useState(false);
-  const [ uploading, setUploading ] = React.useState(false);
-  const [ progress, setProgress ] = React.useState(0);
-  const [ operatable, setOperatable ] = React.useState(true);
-  const [ prompt, setPrompt ] = React.useState('');
-  const [ mounted, setMounted ] = React.useState(false);
-  const [ request, setRequest ] = React.useState(defaultValues);
-  const [ options, setOptions ] = React.useState({
+  const [initialed, setInitialed] = React.useState(false);
+  const [uploading, setUploading] = React.useState(false);
+  const [progress, setProgress] = React.useState(0);
+  const [operatable, setOperatable] = React.useState(true);
+  const [prompt, setPrompt] = React.useState('');
+  const [mounted, setMounted] = React.useState(false);
+  const [request, setRequest] = React.useState(defaultValues);
+  const [options, setOptions] = React.useState({
     tags: [],
   });
 
   const texts = i18n[lang];
   const title = texts.title;
-  const onUploadFail = React.useCallback(msg =>{
-    if(!mounted){
+  const onUploadFail = React.useCallback(msg => {
+    if (!mounted) {
       return;
     }
     setOperatable(true);
@@ -67,13 +67,13 @@ export default function UploadDialog(props){
     setProgress(0);
   }
 
-  const closeDialog = ()=>{
+  const closeDialog = () => {
     resetDialog();
     onCancel();
   }
 
-  const onUploadSuccess = imageID =>{
-    if(!mounted){
+  const onUploadSuccess = imageID => {
+    if (!mounted) {
       return;
     }
     setOperatable(true);
@@ -82,58 +82,58 @@ export default function UploadDialog(props){
   }
 
   const onUploadProgress = progress => {
-    if(!mounted){
+    if (!mounted) {
       return;
     }
     setProgress(progress);
   }
 
-  const handleConfirm = () =>{
+  const handleConfirm = () => {
     setPrompt('');
     setOperatable(false);
     const imageName = request.name;
-    if ('' === imageName){
+    if ('' === imageName) {
       onUploadFail('must specify image name');
       return;
     }
     const description = request.description;
-    if ('' === description){
+    if ('' === description) {
       onUploadFail('desciption required');
       return;
     }
 
-    if (!request.tags){
+    if (!request.tags) {
       onUploadFail('image tags required');
       return;
     }
     var tags = [];
-    request.tags.forEach((value, key) =>{
-      if (value){
+    request.tags.forEach((value, key) => {
+      if (value) {
         //checked
         tags.push(key);
       }
     });
-    if (0 === tags.length){
+    if (0 === tags.length) {
       onUploadFail('image tags required');
       return;
     }
 
-    if (!request.file){
+    if (!request.file) {
       onUploadFail('must specify upload file');
       return;
     }
 
     const onCreateSuccess = (imageID) => {
-      if(!mounted){
+      if (!mounted) {
         return;
       }
-      const onDeleteSuccess = () =>{
+      const onDeleteSuccess = () => {
         onUploadFail('new image ' + imageName + ' deleted');
       }
-      const onDeleteFail = (msg) =>{
+      const onDeleteFail = (msg) => {
         onUploadFail('delete new image ' + imageName + ' fail: ' + msg);
       }
-      const onFailAfterCreated = () =>{
+      const onFailAfterCreated = () => {
         deleteMediaImage(imageID, onDeleteSuccess, onDeleteFail);
       }
       setUploading(true);
@@ -143,8 +143,8 @@ export default function UploadDialog(props){
     createMediaImage(imageName, description, tags, onCreateSuccess, onUploadFail);
   }
 
-  const handleRequestPropsChanged = name => e =>{
-    if(!mounted){
+  const handleRequestPropsChanged = name => e => {
+    if (!mounted) {
       return;
     }
     var value = e.target.value
@@ -154,8 +154,8 @@ export default function UploadDialog(props){
     }));
   };
 
-  const handleTagsChanged = name => e =>{
-    if(!mounted){
+  const handleTagsChanged = name => e => {
+    if (!mounted) {
       return;
     }
     var value = e.target.checked
@@ -165,19 +165,35 @@ export default function UploadDialog(props){
     }));
   };
 
-  const handleFileChanged = name => e =>{
-    if(!mounted){
+  const handleFileChanged = name => e => {
+    if (!mounted) {
       return;
     }
+    setPrompt('');
     var file = e.target.files[0];
-    setRequest(previous => ({
-      ...previous,
-      [name]: file,
-    }));
+    e.preventDefault();
+    //check extension
+    if (file && file.name) {
+      let ext = file.name.split('.').pop().toLowerCase();
+      if (ext === 'iso') {
+        setRequest(previous => ({
+          ...previous,
+          [name]: file,
+        }));
+        return;
+      }
+    }
+    //invalid file
+    if ('en' === lang){
+      setPrompt('invalid file, only iso file supported');
+    }else{
+      setPrompt('无效文件，仅支持iso格式');
+    }
+
   };
 
-  React.useEffect(()=>{
-    if (!open){
+  React.useEffect(() => {
+    if (!open) {
       return;
     }
     const imageTags = [
@@ -191,7 +207,7 @@ export default function UploadDialog(props){
 
     setMounted(true);
     var tagOptions = [];
-    imageTags.forEach(tag =>{
+    imageTags.forEach(tag => {
       tagOptions.push({
         label: tag[1],
         value: tag[0],
@@ -214,9 +230,9 @@ export default function UploadDialog(props){
     onClick: closeDialog,
   }];
   let content;
-  if (!initialed){
-    content = <Skeleton variant="rect" style={{height: '10rem'}}/>;
-  }else if(uploading){
+  if (!initialed) {
+    content = <Skeleton variant="rect" style={{ height: '10rem' }} />;
+  } else if (uploading) {
     content = (
       <Grid container>
         <Grid item xs={12}>
@@ -229,7 +245,7 @@ export default function UploadDialog(props){
         </Grid>
       </Grid>
     )
-  }else{
+  } else {
     const inputs = [
       {
         type: "text",
@@ -270,7 +286,7 @@ export default function UploadDialog(props){
       },
     ];
 
-    content = <InputList inputs={inputs}/>
+    content = <InputList inputs={inputs} />
 
     buttons.push(
       {
@@ -283,5 +299,5 @@ export default function UploadDialog(props){
   }
 
   return <CustomDialog size='sm' open={open} prompt={prompt} hideBackdrop
-    title={title}  buttons={buttons} content={content} operatable={operatable}/>;
+    title={title} buttons={buttons} content={content} operatable={operatable} />;
 };
