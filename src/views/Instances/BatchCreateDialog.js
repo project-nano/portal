@@ -24,9 +24,9 @@ import FormLabel from '@material-ui/core/FormLabel';
 import FormGroup from '@material-ui/core/FormGroup';
 import Checkbox from '@material-ui/core/Checkbox';
 import Slider from '@material-ui/core/Slider';
-import ExpansionPanel from '@material-ui/core/ExpansionPanel';
-import ExpansionPanelSummary from '@material-ui/core/ExpansionPanelSummary';
-import ExpansionPanelDetails from '@material-ui/core/ExpansionPanelDetails';
+import Accordion from '@material-ui/core/Accordion';
+import AccordionSummary from '@material-ui/core/AccordionSummary';
+import AccordionDetails from '@material-ui/core/AccordionDetails';
 import ExpandMoreIcon from '@material-ui/icons/ExpandMore';
 import LinearProgress from '@material-ui/core/LinearProgress';
 import Typography from '@material-ui/core/Typography';
@@ -35,11 +35,13 @@ import Typography from '@material-ui/core/Typography';
 import GridItem from "components/Grid/GridItem.js";
 import SingleRow from "components/Grid/SingleRow.js";
 import CustomDialog from "components/Dialog/CustomDialog.js";
-import { getAllComputePools, searchDiskImages, batchCreatingGuests,
-  checkBatchCreatingStatus, querySystemTemplates } from 'nano_api.js';
+import {
+  getAllComputePools, searchDiskImages, batchCreatingGuests, getSystemStatus,
+  checkBatchCreatingStatus, querySystemTemplates
+} from 'nano_api.js';
 
 const i18n = {
-  'en':{
+  'en': {
     title: 'Batch Creating Instances',
     rule: 'Name Rule',
     ruleOrder: 'By Order',
@@ -82,7 +84,7 @@ const i18n = {
     instance: 'Instance',
     result: 'Result',
   },
-  'cn':{
+  'cn': {
     title: '批量创建云主机',
     rule: '实例命名规则',
     ruleOrder: '顺序递增',
@@ -127,7 +129,10 @@ const i18n = {
   },
 };
 
-export default function CreateDialog(props){
+export default function CreateDialog(props) {
+  const defaultMaxCores = 16;
+  const defaultMaxMemory = 24;
+  const defaultMaxDisk = 32;
   const StageEnum = {
     initial: 0,
     processing: 1,
@@ -165,23 +170,26 @@ export default function CreateDialog(props){
     inbound: 0,
     outbound: 0,
   };
-  const [ initialed, setInitialed ] = React.useState(false);
-  const [ stage, setStage ] = React.useState(StageEnum.initial);
-  const [ resultList, setResultList ] = React.useState(null);
-  const [ operatable, setOperatable ] = React.useState(true);
-  const [ prompt, setPrompt ] = React.useState('');
-  const [ mounted, setMounted ] = React.useState(false);
-  const [ request, setRequest ] = React.useState(defaultValues);
-  const [ options, setOptions ] = React.useState({
+  const [initialed, setInitialed] = React.useState(false);
+  const [stage, setStage] = React.useState(StageEnum.initial);
+  const [resultList, setResultList] = React.useState(null);
+  const [operatable, setOperatable] = React.useState(true);
+  const [prompt, setPrompt] = React.useState('');
+  const [mounted, setMounted] = React.useState(false);
+  const [request, setRequest] = React.useState(defaultValues);
+  const [options, setOptions] = React.useState({
     pools: [],
     images: [],
     versions: [],
   });
+  const [maxCores, setMaxCores] = React.useState(defaultMaxCores);
+  const [maxMemory, setMaxMemory] = React.useState(defaultMaxMemory);
+  const [maxDisk, setMaxDisk] = React.useState(defaultMaxDisk);
   const texts = i18n[lang];
   const title = texts.title;
 
-  const onCreateFail = React.useCallback(msg =>{
-    if(!mounted){
+  const onCreateFail = React.useCallback(msg => {
+    if (!mounted) {
       return;
     }
     setOperatable(true);
@@ -195,13 +203,13 @@ export default function CreateDialog(props){
     setStage(StageEnum.initial);
   }
 
-  const closeDialog = ()=>{
+  const closeDialog = () => {
     resetDialog();
     onCancel();
   }
 
-  const onCreateSuccess = () =>{
-    if(!mounted){
+  const onCreateSuccess = () => {
+    if (!mounted) {
       return;
     }
     resetDialog();
@@ -209,18 +217,18 @@ export default function CreateDialog(props){
   }
 
   const onAccept = batchID => {
-    if(!mounted){
+    if (!mounted) {
       return;
     }
     setPrompt('');
-    if(StageEnum.initial === stage){
+    if (StageEnum.initial === stage) {
       setStage(StageEnum.processing);
     }
     checkBatchCreatingStatus(batchID, onProcessing(batchID), onComplete(batchID), onCreateFail);
   }
 
-  const onProcessing = batchID => dataList =>{
-    if(!mounted){
+  const onProcessing = batchID => dataList => {
+    if (!mounted) {
       return;
     }
     setResultList(dataList);
@@ -229,68 +237,68 @@ export default function CreateDialog(props){
     }, checkInterval);
   }
 
-  const onComplete = batchID => dataList =>{
-    if(!mounted){
+  const onComplete = batchID => dataList => {
+    if (!mounted) {
       return;
     }
     setResultList(dataList);
-    if(StageEnum.finish !== stage){
+    if (StageEnum.finish !== stage) {
       setOperatable(true);
       setStage(StageEnum.finish);
     }
   }
 
-  const handleConfirm = () =>{
+  const handleConfirm = () => {
     setPrompt('');
     setOperatable(false);
-    if (!request.prefix){
+    if (!request.prefix) {
       onCreateFail('prefix required');
       return;
     }
     var count = Number.parseInt(request.count);
-    if(Number.isNaN(count)){
+    if (Number.isNaN(count)) {
       onCreateFail('invalid count: ' + request.count);
       return;
     }
 
-    if (!request.pool){
+    if (!request.pool) {
       onCreateFail('must specify target pool');
       return;
     }
     var cores = Number.parseInt(request.cores);
-    if(Number.isNaN(cores)){
+    if (Number.isNaN(cores)) {
       onCreateFail('invalid cores: ' + request.cores);
       return;
     }
     var memory = Number.parseInt(request.memory);
-    if(Number.isNaN(memory)){
+    if (Number.isNaN(memory)) {
       onCreateFail('invalid memory: ' + request.memory);
       return;
     }
     const GiB = 1 << 30;
     var disks = [request.system_disk * GiB];
-    if (0 !== request.data_disk){
+    if (0 !== request.data_disk) {
       disks.push(request.data_disk * GiB);
     }
     var systemVersion = request.system_template;
     let fromImage;
-    if (defaultOption === request.from_image){
+    if (defaultOption === request.from_image) {
       fromImage = '';
-    }else{
+    } else {
       fromImage = request.from_image;
     }
     var modules = [];
     var ciEnabled = false;
-    request.modules.forEach( (checked, name) =>{
-      if(checked){
+    request.modules.forEach((checked, name) => {
+      if (checked) {
         modules.push(name);
-        if (ciModuleName === name){
+        if (ciModuleName === name) {
           ciEnabled = true;
         }
       }
     });
     var cloudInit = null;
-    if(ciEnabled){
+    if (ciEnabled) {
       cloudInit = {
         admin_name: request.module_cloud_init_admin_name,
         admin_secret: request.module_cloud_init_admin_password,
@@ -310,8 +318,8 @@ export default function CreateDialog(props){
       cloudInit, qos, onAccept, onCreateFail);
   }
 
-  const handleRequestPropsChanged = name => e =>{
-    if(!mounted){
+  const handleRequestPropsChanged = name => e => {
+    if (!mounted) {
       return;
     }
     var value = e.target.value
@@ -321,8 +329,8 @@ export default function CreateDialog(props){
     }));
   };
 
-  const handleSliderValueChanged = name => (e, value) =>{
-    if(!mounted){
+  const handleSliderValueChanged = name => (e, value) => {
+    if (!mounted) {
       return;
     }
     setRequest(previous => ({
@@ -331,8 +339,8 @@ export default function CreateDialog(props){
     }));
   };
 
-  const handleCheckedValueChanged = name => e =>{
-    if(!mounted){
+  const handleCheckedValueChanged = name => e => {
+    if (!mounted) {
       return;
     }
     var value = e.target.checked
@@ -342,8 +350,8 @@ export default function CreateDialog(props){
     }));
   };
 
-  const handleCheckedGroupChanged = (groupName, propertyName) => e =>{
-    if(!mounted){
+  const handleCheckedGroupChanged = (groupName, propertyName) => e => {
+    if (!mounted) {
       return;
     }
     var checked = e.target.checked
@@ -353,8 +361,8 @@ export default function CreateDialog(props){
     }));
   };
 
-  React.useEffect(()=>{
-    if (!open){
+  React.useEffect(() => {
+    if (!open) {
       return;
     }
     var poolOptions = [];
@@ -365,11 +373,11 @@ export default function CreateDialog(props){
     var templateOptions = [];
 
     setMounted(true);
-    const onQueryTemplateSuccess = dataList =>{
-      if(!mounted){
+    const onQueryTemplateSuccess = dataList => {
+      if (!mounted) {
         return;
       }
-      dataList.forEach(({id, name}) =>{
+      dataList.forEach(({ id, name }) => {
         templateOptions.push({
           label: name,
           value: id,
@@ -383,11 +391,11 @@ export default function CreateDialog(props){
       setInitialed(true);
     }
 
-    const onQueryImageSuccess = dataList =>{
-      if(!mounted){
+    const onQueryImageSuccess = dataList => {
+      if (!mounted) {
         return;
       }
-      dataList.forEach(({name, id})=>{
+      dataList.forEach(({ name, id }) => {
         imageOptions.push({
           label: name,
           value: id,
@@ -396,11 +404,11 @@ export default function CreateDialog(props){
       querySystemTemplates(onQueryTemplateSuccess, onCreateFail);
     };
 
-    const onQueryPoolSuccess = dataList =>{
-      if(!mounted){
+    const onQueryPoolSuccess = dataList => {
+      if (!mounted) {
         return;
       }
-      dataList.forEach(({name})=>{
+      dataList.forEach(({ name }) => {
         poolOptions.push({
           label: name,
           value: name,
@@ -410,7 +418,24 @@ export default function CreateDialog(props){
       searchDiskImages(onQueryImageSuccess, onCreateFail);
     };
 
-    getAllComputePools(onQueryPoolSuccess, onCreateFail);
+    const onGetSystemStatusSuccess = status => {
+      if (!mounted) {
+        return;
+      }
+      if (status.max_cores && status.max_cores > 0) {
+        setMaxCores(status.max_cores);
+      }
+      if (status.max_memory && status.max_memory > 0) {
+        setMaxMemory(status.max_memory);
+      }
+      if (status.max_disk && status.max_disk > 0) {
+        setMaxDisk(status.max_disk);
+      }
+      getAllComputePools(onQueryPoolSuccess, onCreateFail);
+    }
+
+    getSystemStatus(onGetSystemStatusSuccess, onCreateFail);
+
     return () => {
       setMounted(false);
     }
@@ -418,26 +443,26 @@ export default function CreateDialog(props){
 
 
   const resultToTable = dataList => {
-    if(!mounted){
+    if (!mounted) {
       return;
     }
     var rows = [];
-    if(!dataList){
-      return <div/>;
+    if (!dataList) {
+      return <div />;
     }
-    dataList.forEach((result, index) =>{
+    dataList.forEach((result, index) => {
       let content;
-      if('fail' === result.status){
+      if ('fail' === result.status) {
         content = texts.fail + ':' + result.error;
-      }else if ('created' === result.status){
+      } else if ('created' === result.status) {
         content = texts.complete;
-      }else{
+      } else {
         //stopping
         const progress = result.progress;
         content = (
           <Grid container>
             <GridItem xs={8} sm={9} md={10}>
-              <LinearProgress variant="determinate" value={progress}/>
+              <LinearProgress variant="determinate" value={progress} />
             </GridItem>
             <GridItem xs={4} sm={3} md={2}>
               <Typography align="center">
@@ -499,16 +524,16 @@ export default function CreateDialog(props){
   };
 
   let content, buttons;
-  if (!initialed){
-    content = <Skeleton variant="rect" style={{height: '10rem'}}/>;
+  if (!initialed) {
+    content = <Skeleton variant="rect" style={{ height: '10rem' }} />;
     buttons = [cancelButton];
-  }else{
+  } else {
     switch (stage) {
       case StageEnum.processing:
         content = resultToTable(resultList);
-        if(prompt){
+        if (prompt) {
           buttons = [cancelButton];
-        }else{
+        } else {
           buttons = [];
         }
         break;
@@ -519,37 +544,54 @@ export default function CreateDialog(props){
       default:
         //initial
         buttons = [cancelButton, confirmButton];
-        const coresOptions = [];
-        [1, 2, 4, 8, 16].forEach( core =>{
-          coresOptions.push(core.toString());
-        });
-        const memoryOptionsRates = [1, 2, 4, 8, 16, 32];
+        let coresOptions = [];
+        let exitFlag = false;
+        for (let cores = 1; !exitFlag; cores = cores * 2) {
+          if (cores >= maxCores) {
+            cores = maxCores;
+            exitFlag = true;
+          }
+          coresOptions.push({
+            label: cores.toString(),
+            value: cores.toString(),
+          });
+        }
+
         const memoryBase = 512;
         const MiB = 1 << 20;
         const GiB = 1 << 30;
-        var memoryOptions = [];
-        memoryOptionsRates.forEach(rate => {
-          var value = memoryBase * rate * MiB;
+        let memoryOptions = [];
+        const memoryLimit = maxMemory * GiB;
+        exitFlag = false;
+
+        for (let value = memoryBase * MiB; !exitFlag; value = value * 2) {
+          if (value >= memoryLimit) {
+            value = memoryLimit;
+            exitFlag = true;
+          }
           let name;
-          if (value >= GiB){
+          if (value >= GiB) {
             name = value / GiB + ' GB';
-          }else{
+          } else {
             name = value / MiB + ' MB';
           }
           memoryOptions.push({
-            name: name,
+            label: name,
             value: value.toString(),
           });
-        });
+
+        }
         //system disk slider
         let systemDiskSlider;
+        let systemDiskLabel = texts.systemDisk + ` - ${request.system_disk} GB`;
         {
-          const minRange = 5;
-          const maxRange = 60;
           const step = 1;
-          const markValues = [minRange, maxRange, 30];
+          const minRange = 5;
+          const maxRange = maxDisk;
+          let midRange = maxRange >> 1;
+          const markValues = [minRange, midRange, maxRange];
           var systemMarks = [];
-          markValues.forEach(value =>{
+          markValues.forEach(value => {
             systemMarks.push({
               value: value,
               label: value + ' GB',
@@ -570,21 +612,25 @@ export default function CreateDialog(props){
         }
         //disk slider
         let dataDiskSlider;
+        let dataDiskLabel;
         {
           const minRange = 0;
-          const maxRange = 20;
           const step = 2;
-          var dataMarks = [{
-            value: 0,
-            label: texts.noDataDisk,
-          },{
-            value: 10,
-            label: '10 GB',
-          },{
-            value: 20,
-            label: '20 GB',
-          },
-          ];
+          const maxRange = maxDisk;
+          let midRange = maxRange >> 1;
+          const markValues = [minRange, midRange, maxRange];
+          let dataMarks = [];
+          markValues.forEach(value => {
+            dataMarks.push({
+              value: value,
+              label: value + ' GB',
+            })
+          });
+          if (0 === request.data_disk) {
+            dataDiskLabel = texts.dataDisk + ' - ' + texts.noDataDisk;
+          } else {
+            dataDiskLabel = texts.dataDisk + ` - ${request.data_disk} GB`;
+          }
           dataDiskSlider = (
             <Slider
               color="secondary"
@@ -600,7 +646,7 @@ export default function CreateDialog(props){
         }
 
         let moduleOption;
-        if (request.system_template && defaultOption !== request.from_image){
+        if (request.system_template && defaultOption !== request.from_image) {
           var modules = [{
             value: 'qemu',
             label: 'QEMU-Guest-Agent',
@@ -611,7 +657,7 @@ export default function CreateDialog(props){
           }
           ];
           let ciOptions;
-          if (request.modules.get(ciModuleName)){
+          if (request.modules.get(ciModuleName)) {
             //ci checked
             ciOptions = (
               <GridItem xs={12} sm={8} md={6}>
@@ -650,8 +696,8 @@ export default function CreateDialog(props){
                 </Box>
               </GridItem>
             )
-          }else{
-            ciOptions = <GridItem/>;
+          } else {
+            ciOptions = <GridItem />;
           }
 
           moduleOption = (
@@ -663,22 +709,22 @@ export default function CreateDialog(props){
                     <FormGroup>
                       <Grid container>
                         {
-                            modules.map(module => {
-                              let checked;
-                              if (request.modules.has(module.value)){
-                                checked = request.modules.get(module.value);
-                              }else{
-                                checked = false;
-                              }
-                              return (
-                                <GridItem xs={12} sm={6} md={4} key={module.value}>
-                                  <FormControlLabel
-                                    control={<Checkbox checked={checked} onChange={handleCheckedGroupChanged('modules', module.value)} value={module.value}/>}
-                                    label={module.label}
-                                  />
-                                </GridItem>
-                              );
-                            })
+                          modules.map(module => {
+                            let checked;
+                            if (request.modules.has(module.value)) {
+                              checked = request.modules.get(module.value);
+                            } else {
+                              checked = false;
+                            }
+                            return (
+                              <GridItem xs={12} sm={6} md={4} key={module.value}>
+                                <FormControlLabel
+                                  control={<Checkbox checked={checked} onChange={handleCheckedGroupChanged('modules', module.value)} value={module.value} />}
+                                  label={module.label}
+                                />
+                              </GridItem>
+                            );
+                          })
                         }
                       </Grid>
                     </FormGroup>
@@ -689,8 +735,8 @@ export default function CreateDialog(props){
             </SingleRow>
           )
 
-        }else{
-          moduleOption = <GridItem/>;
+        } else {
+          moduleOption = <GridItem />;
         }
 
 
@@ -704,13 +750,13 @@ export default function CreateDialog(props){
                     <RadioGroup aria-label={texts.rule} name="rule" value={request.rule} onChange={handleRequestPropsChanged('rule')} row>
                       <Box display='flex'>
                         <Box>
-                          <FormControlLabel value={RuleEmum.order} control={<Radio />} label={texts.ruleOrder}/>
+                          <FormControlLabel value={RuleEmum.order} control={<Radio />} label={texts.ruleOrder} />
                         </Box>
                         <Box>
-                          <FormControlLabel value={RuleEmum.MAC} control={<Radio disabled/>} label={texts.ruleMAC}/>
+                          <FormControlLabel value={RuleEmum.MAC} control={<Radio disabled />} label={texts.ruleMAC} />
                         </Box>
                         <Box>
-                          <FormControlLabel value={RuleEmum.address} control={<Radio disabled/>} label={texts.ruleAddress}/>
+                          <FormControlLabel value={RuleEmum.address} control={<Radio disabled />} label={texts.ruleAddress} />
                         </Box>
                       </Box>
                     </RadioGroup>
@@ -721,17 +767,17 @@ export default function CreateDialog(props){
             <SingleRow>
               <GridItem xs={6}>
                 <Box m={0} pt={2}>
-                    <FormLabel component="legend">{texts.count}</FormLabel>
-                    <Slider
-                      color="secondary"
-                      value={request.count}
-                      max={20}
-                      min={1}
-                      step={1}
-                      valueLabelDisplay="auto"
-                      marks={[{value: 1, label: '1'}, {value: 10, label: '10'}, {value: 20, label: '20'}]}
-                      onChange={handleSliderValueChanged('count')}
-                    />
+                  <FormLabel component="legend">{texts.count}</FormLabel>
+                  <Slider
+                    color="secondary"
+                    value={request.count}
+                    max={20}
+                    min={1}
+                    step={1}
+                    valueLabelDisplay="auto"
+                    marks={[{ value: 1, label: '1' }, { value: 10, label: '10' }, { value: 20, label: '20' }]}
+                    onChange={handleSliderValueChanged('count')}
+                  />
                 </Box>
               </GridItem>
             </SingleRow>
@@ -764,7 +810,7 @@ export default function CreateDialog(props){
                     fullWidth
                   >
                     {
-                      options.pools.map((option, key) =>(
+                      options.pools.map((option, key) => (
                         <MenuItem value={option.value} key={key}>{option.label}</MenuItem>
                       ))
                     }
@@ -775,16 +821,16 @@ export default function CreateDialog(props){
             <SingleRow>
               <GridItem xs={12}>
                 <Box m={0} pt={2}>
-                <FormControl component="fieldset" fullWidth>
-                  <FormLabel component="legend">{texts.core}</FormLabel>
-                  <RadioGroup aria-label={texts.core} name="cores" value={request.cores} onChange={handleRequestPropsChanged('cores')} row>
-                    <Grid container>
-                    {
-                      coresOptions.map(option => <GridItem xs={3} sm={2} md={1} key={option}><FormControlLabel value={option} control={<Radio />} label={option}/></GridItem>)
-                    }
-                    </Grid>
-                  </RadioGroup>
-                </FormControl>
+                  <FormControl component="fieldset" fullWidth>
+                    <FormLabel component="legend">{texts.core}</FormLabel>
+                    <RadioGroup aria-label={texts.core} name="cores" value={request.cores} onChange={handleRequestPropsChanged('cores')} row>
+                      <Grid container>
+                        {
+                          coresOptions.map(option => <GridItem xs={3} sm={2} md={1} key={option.value}><FormControlLabel value={option.value} control={<Radio />} label={option.label} /></GridItem>)
+                        }
+                      </Grid>
+                    </RadioGroup>
+                  </FormControl>
                 </Box>
               </GridItem>
               <GridItem xs={12}>
@@ -793,9 +839,9 @@ export default function CreateDialog(props){
                     <FormLabel component="legend">{texts.memory}</FormLabel>
                     <RadioGroup aria-label={texts.memory} name="memory" value={request.memory} onChange={handleRequestPropsChanged('memory')} row>
                       <Grid container>
-                      {
-                        memoryOptions.map(option => <GridItem xs={6} sm={3} md={2} key={option.value}><FormControlLabel value={option.value} control={<Radio />} label={option.name}/></GridItem>)
-                      }
+                        {
+                          memoryOptions.map(option => <GridItem xs={6} sm={3} md={2} key={option.value}><FormControlLabel value={option.value} control={<Radio />} label={option.label} /></GridItem>)
+                        }
                       </Grid>
                     </RadioGroup>
                   </FormControl>
@@ -806,7 +852,7 @@ export default function CreateDialog(props){
             <SingleRow>
               <GridItem xs={12} sm={6} md={4}>
                 <Box m={0} pt={2}>
-                  <FormLabel component="legend">{texts.systemDisk}</FormLabel>
+                  <FormLabel component="legend">{systemDiskLabel}</FormLabel>
                   {systemDiskSlider}
                 </Box>
               </GridItem>
@@ -814,7 +860,7 @@ export default function CreateDialog(props){
             <SingleRow>
               <GridItem xs={12} sm={6} md={4}>
                 <Box m={0} pt={2}>
-                  <FormLabel component="legend">{texts.dataDisk}</FormLabel>
+                  <FormLabel component="legend">{dataDiskLabel}</FormLabel>
                   {dataDiskSlider}
                 </Box>
               </GridItem>
@@ -833,7 +879,7 @@ export default function CreateDialog(props){
                     fullWidth
                   >
                     {
-                      options.images.map((option, key) =>(
+                      options.images.map((option, key) => (
                         <MenuItem value={option.value} key={key}>{option.label}</MenuItem>
                       ))
                     }
@@ -855,7 +901,7 @@ export default function CreateDialog(props){
                     fullWidth
                   >
                     {
-                      options.versions.map((option, key) =>(
+                      options.versions.map((option, key) => (
                         <MenuItem value={option.value} key={key}>{option.label}</MenuItem>
                       ))
                     }
@@ -868,17 +914,17 @@ export default function CreateDialog(props){
                 <Box m={0} pb={2}>
                   <InputLabel htmlFor="auto_start">{texts.autoStartup}</InputLabel>
 
-                    {texts.off}
-                    <Switch
-                      checked={request.failover}
-                      onChange={handleCheckedValueChanged('auto_start')}
-                      color="primary"
-                      inputProps={{
-                        name: 'auto_start',
-                        id: 'auto_start',
-                      }}
-                    />
-                    {texts.on}
+                  {texts.off}
+                  <Switch
+                    checked={request.failover}
+                    onChange={handleCheckedValueChanged('auto_start')}
+                    color="primary"
+                    inputProps={{
+                      name: 'auto_start',
+                      id: 'auto_start',
+                    }}
+                  />
+                  {texts.on}
 
                 </Box>
               </GridItem>
@@ -887,28 +933,28 @@ export default function CreateDialog(props){
             <SingleRow>
               <GridItem xs={12} sm={8} md={6}>
                 <Box m={0} pb={2}>
-                <ExpansionPanel>
-                  <ExpansionPanelSummary
-                    expandIcon={<ExpandMoreIcon />}
-                  >
-                    {texts.qos}
-                  </ExpansionPanelSummary>
-                  <ExpansionPanelDetails>
-                    <Grid container>
-                      <GridItem xs={12}>
-                        <Box m={1} p={2}>
-                          <FormControl component="fieldset" fullWidth>
-                            <FormLabel component="legend">{texts.cpuPriority}</FormLabel>
-                            <RadioGroup aria-label={texts.cpuPriority} value={request.priority} onChange={handleRequestPropsChanged('priority')} row>
-                              <FormControlLabel value='high' control={<Radio />} label={texts.cpuPriorityHigh} key='high'/>
-                              <FormControlLabel value='medium' control={<Radio />} label={texts.cpuPriorityMedium} key='medium'/>
-                              <FormControlLabel value='low' control={<Radio />} label={texts.cpuPriorityLow} key='low'/>
-                            </RadioGroup>
-                          </FormControl>
-                        </Box>
-                      </GridItem>
-                      <GridItem xs={12}>
-                        <Box m={1} p={2}>
+                  <Accordion>
+                    <AccordionSummary
+                      expandIcon={<ExpandMoreIcon />}
+                    >
+                      {texts.qos}
+                    </AccordionSummary>
+                    <AccordionDetails>
+                      <Grid container>
+                        <GridItem xs={12}>
+                          <Box m={1} p={2}>
+                            <FormControl component="fieldset" fullWidth>
+                              <FormLabel component="legend">{texts.cpuPriority}</FormLabel>
+                              <RadioGroup aria-label={texts.cpuPriority} value={request.priority} onChange={handleRequestPropsChanged('priority')} row>
+                                <FormControlLabel value='high' control={<Radio />} label={texts.cpuPriorityHigh} key='high' />
+                                <FormControlLabel value='medium' control={<Radio />} label={texts.cpuPriorityMedium} key='medium' />
+                                <FormControlLabel value='low' control={<Radio />} label={texts.cpuPriorityLow} key='low' />
+                              </RadioGroup>
+                            </FormControl>
+                          </Box>
+                        </GridItem>
+                        <GridItem xs={12}>
+                          <Box m={1} p={2}>
                             <FormLabel component="legend">{texts.iops}</FormLabel>
                             <Slider
                               color="secondary"
@@ -917,13 +963,13 @@ export default function CreateDialog(props){
                               min={0}
                               step={10}
                               valueLabelDisplay="auto"
-                              marks={[{value: 0, label: texts.noLimit}, {value: 2000, label: 2000}]}
+                              marks={[{ value: 0, label: texts.noLimit }, { value: 2000, label: 2000 }]}
                               onChange={handleSliderValueChanged('iops')}
                             />
-                        </Box>
-                      </GridItem>
-                      <GridItem xs={12}>
-                        <Box m={1} p={2}>
+                          </Box>
+                        </GridItem>
+                        <GridItem xs={12}>
+                          <Box m={1} p={2}>
                             <FormLabel component="legend">{texts.inbound}</FormLabel>
                             <Slider
                               color="secondary"
@@ -932,13 +978,13 @@ export default function CreateDialog(props){
                               min={0}
                               step={2}
                               valueLabelDisplay="auto"
-                              marks={[{value: 0, label: texts.noLimit}, {value: 20, label: '20 Mbit/s'}]}
+                              marks={[{ value: 0, label: texts.noLimit }, { value: 20, label: '20 Mbit/s' }]}
                               onChange={handleSliderValueChanged('inbound')}
                             />
-                        </Box>
-                      </GridItem>
-                      <GridItem xs={12}>
-                        <Box m={1} p={2}>
+                          </Box>
+                        </GridItem>
+                        <GridItem xs={12}>
+                          <Box m={1} p={2}>
                             <FormLabel component="legend">{texts.outbound}</FormLabel>
                             <Slider
                               color="secondary"
@@ -947,21 +993,21 @@ export default function CreateDialog(props){
                               min={0}
                               step={2}
                               valueLabelDisplay="auto"
-                              marks={[{value: 0, label: texts.noLimit}, {value: 20, label: '20 Mbit/s'}]}
+                              marks={[{ value: 0, label: texts.noLimit }, { value: 20, label: '20 Mbit/s' }]}
                               onChange={handleSliderValueChanged('outbound')}
                             />
-                        </Box>
-                      </GridItem>
-                    </Grid>
-                  </ExpansionPanelDetails>
-                </ExpansionPanel>
-              </Box>
-            </GridItem>
-          </SingleRow>
-        </Grid>
+                          </Box>
+                        </GridItem>
+                      </Grid>
+                    </AccordionDetails>
+                  </Accordion>
+                </Box>
+              </GridItem>
+            </SingleRow>
+          </Grid>
         );
     }
   }
   return <CustomDialog size='md' open={open} prompt={prompt} promptPosition="top"
-    hideBackdrop title={title}  buttons={buttons} content={content} operatable={operatable}/>;
+    hideBackdrop title={title} buttons={buttons} content={content} operatable={operatable} />;
 };

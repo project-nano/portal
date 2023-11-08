@@ -9,9 +9,9 @@ import FormControl from '@material-ui/core/FormControl';
 import FormLabel from '@material-ui/core/FormLabel';
 import FormGroup from '@material-ui/core/FormGroup';
 import Checkbox from '@material-ui/core/Checkbox';
-import ExpansionPanel from '@material-ui/core/ExpansionPanel';
-import ExpansionPanelSummary from '@material-ui/core/ExpansionPanelSummary';
-import ExpansionPanelDetails from '@material-ui/core/ExpansionPanelDetails';
+import Accordion from '@material-ui/core/Accordion';
+import AccordionSummary from '@material-ui/core/AccordionSummary';
+import AccordionDetails from '@material-ui/core/AccordionDetails';
 import ExpandMoreIcon from '@material-ui/icons/ExpandMore';
 import LinearProgress from '@material-ui/core/LinearProgress';
 import Typography from '@material-ui/core/Typography';
@@ -21,7 +21,7 @@ import GridItem from "components/Grid/GridItem.js";
 import SingleRow from "components/Grid/SingleRow.js";
 import InputList from "components/CustomInput/InputList";
 import CustomDialog from "components/Dialog/CustomDialog.js";
-import { getAllComputePools, searchDiskImages, createInstance,
+import { getAllComputePools, searchDiskImages, createInstance, getSystemStatus,
   getInstanceConfig, querySystemTemplates, searchSecurityPolicyGroups } from 'nano_api.js';
 
 const i18n = {
@@ -93,11 +93,12 @@ const i18n = {
     cancel: '取消',
     confirm: '确定',
   },
-}
-
-;
+};
 
 export default function CreateDialog(props){
+  const defaultMaxCores = 16;
+  const defaultMaxMemory = 24;
+  const defaultMaxDisk = 32;
   const defaultOption = '__default';
   const ciModuleName = 'cloud-init';
   const checkInterval = 1000;
@@ -136,6 +137,9 @@ export default function CreateDialog(props){
     versions: [],
     policies: [],
   });
+  const [ maxCores, setMaxCores ] = React.useState(defaultMaxCores);
+  const [ maxMemory, setMaxMemory ] = React.useState(defaultMaxMemory);
+  const [ maxDisk, setMaxDisk ] = React.useState(defaultMaxDisk);
   const texts = i18n[lang];
   const title = texts.title;
   const onCreateFail = React.useCallback(msg =>{
@@ -364,6 +368,7 @@ export default function CreateDialog(props){
           value: id,
         });
       })
+
       querySystemTemplates(onQueryTemplateSuccess, onCreateFail);
     };
 
@@ -381,7 +386,24 @@ export default function CreateDialog(props){
       searchDiskImages(onQueryImageSuccess, onCreateFail);
     };
 
-    getAllComputePools(onQueryPoolSuccess, onCreateFail);
+    const onGetSystemStatusSuccess = status =>{
+      if(!mounted){
+        return;
+      }
+      if (status.max_cores && status.max_cores > 0){
+        setMaxCores(status.max_cores);
+      }
+      if (status.max_memory && status.max_memory > 0){
+        setMaxMemory(status.max_memory);
+      }
+      if (status.max_disk && status.max_disk > 0){
+        setMaxDisk(status.max_disk);
+      }
+      getAllComputePools(onQueryPoolSuccess, onCreateFail);
+    }
+
+    getSystemStatus(onGetSystemStatusSuccess, onCreateFail);
+    
     return () => {
       setMounted(false);
     }
@@ -414,23 +436,31 @@ export default function CreateDialog(props){
       </Grid>
     )
   }else{
-    const availableCores = [1, 2, 4, 8, 16];
-    var coresOptions = []
-    availableCores.forEach( core => {
+    let coresOptions = [];
+    let exitFlag = false;
+    for (let cores = 1; !exitFlag; cores = cores * 2){
+      if (cores >= maxCores){
+        cores = maxCores;
+        exitFlag = true;
+      }
       coresOptions.push({
-        label: core.toString(),
-        value: core.toString(),
+        label: cores.toString(),
+        value: cores.toString(),
       });
-    });
+    }
 
-
-    const memoryOptionsRates = [1, 2, 4, 8, 16, 32];
     const memoryBase = 512;
     const MiB = 1 << 20;
     const GiB = 1 << 30;
-    var memoryOptions = [];
-    memoryOptionsRates.forEach(rate => {
-      var value = memoryBase * rate * MiB;
+    let memoryOptions = [];
+    const memoryLimit = maxMemory * GiB;
+    exitFlag = false;
+
+    for (let value = memoryBase * MiB; !exitFlag; value = value * 2){
+      if (value >= memoryLimit){
+        value = memoryLimit;
+        exitFlag = true;
+      }
       let name;
       if (value >= GiB){
         name = value / GiB + ' GB';
@@ -441,14 +471,17 @@ export default function CreateDialog(props){
         label: name,
         value: value.toString(),
       });
-    });
+      
+    }
+
     //system disk slider
     let systemDiskSlider;
     {
-      const minRange = 5;
-      const maxRange = 60;
       const step = 1;
-      const markValues = [minRange, maxRange, 30];
+      const minRange = 5;
+      const maxRange = maxDisk;
+      let midRange = maxRange >> 1;
+      const markValues = [minRange, midRange, maxRange];
       var systemMarks = [];
       markValues.forEach(value =>{
         systemMarks.push({
@@ -458,7 +491,7 @@ export default function CreateDialog(props){
       });
       systemDiskSlider = {
         type: 'slider',
-        label: texts.systemDisk,
+        label: texts.systemDisk + ` - ${request.system_disk} GB`,
         onChange: handleSliderValueChanged('system_disk'),
         value: request.system_disk,
         oneRow: true,
@@ -475,22 +508,26 @@ export default function CreateDialog(props){
     let dataDiskSlider;
     {
       const minRange = 0;
-      const maxRange = 20;
       const step = 2;
-      var dataMarks = [{
-        value: 0,
-        label: texts.noDataDisk,
-      },{
-        value: 10,
-        label: '10 GB',
-      },{
-        value: 20,
-        label: '20 GB',
-      },
-      ];
+      const maxRange = maxDisk;
+      let midRange = maxRange >> 1;
+      const markValues = [minRange, midRange, maxRange];
+      let dataMarks = [];
+      markValues.forEach(value =>{
+        dataMarks.push({
+          value: value,
+          label: value + ' GB',
+        })
+      });
+      let dataDiskLabel;
+      if (0 === request.data_disk){
+        dataDiskLabel = texts.dataDisk + ' - ' + texts.noDataDisk;
+      }else{
+        dataDiskLabel = texts.dataDisk + ` - ${request.data_disk} GB`;
+      }
       dataDiskSlider = {
         type: 'slider',
-        label: texts.dataDisk,
+        label: dataDiskLabel,
         onChange: handleSliderValueChanged('data_disk'),
         value: request.data_disk,
         oneRow: true,
@@ -759,18 +796,18 @@ export default function CreateDialog(props){
         <SingleRow>
           <GridItem xs={12} sm={9} md={7}>
             <Box m={0} pb={2}>
-            <ExpansionPanel>
-              <ExpansionPanelSummary
+            <Accordion>
+              <AccordionSummary
                 expandIcon={<ExpandMoreIcon />}
               >
                 {texts.qos}
-              </ExpansionPanelSummary>
-              <ExpansionPanelDetails>
+              </AccordionSummary>
+              <AccordionDetails>
                 <Box m={1} pt={2}>
                   <InputList inputs={qosComponents}/>
                 </Box>
-              </ExpansionPanelDetails>
-            </ExpansionPanel>
+              </AccordionDetails>
+            </Accordion>
           </Box>
         </GridItem>
       </SingleRow>
