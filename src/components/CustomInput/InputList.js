@@ -18,7 +18,7 @@ import Slider from '@material-ui/core/Slider';
 
 export function InputComponent(props){
   var { type, label, value, onChange, required, oneRow, disabled, options,
-    on, off, rows, step, maxStep, minStep, marks, helper,
+    on, off, rows, step, maxStep, minStep, marks, helper, valueLabelFormat,
     ...rest } = props;
   let component;
   switch (type) {
@@ -194,6 +194,7 @@ export function InputComponent(props){
             valueLabelDisplay="auto"
             marks={marks}
             onChange={onChange}
+            valueLabelFormat={valueLabelFormat}
           />
         </Box>
       );
@@ -223,6 +224,7 @@ InputComponent.propTypes = {
   label: PropTypes.string.isRequired,
   value: PropTypes.any,
   onChange: PropTypes.func,
+  valueLabelFormat: PropTypes.func,
   required: PropTypes.bool,
   oneRow: PropTypes.bool,
   xs: PropTypes.number,

@@ -140,6 +140,7 @@ export default function CreateDialog(props){
   const [ maxCores, setMaxCores ] = React.useState(defaultMaxCores);
   const [ maxMemory, setMaxMemory ] = React.useState(defaultMaxMemory);
   const [ maxDisk, setMaxDisk ] = React.useState(defaultMaxDisk);
+  const [ coreValue, setCoreValue ] = React.useState(0);
   const texts = i18n[lang];
   const title = texts.title;
   const onCreateFail = React.useCallback(msg =>{
@@ -436,18 +437,59 @@ export default function CreateDialog(props){
       </Grid>
     )
   }else{
-    let coresOptions = [];
-    let exitFlag = false;
-    for (let cores = 1; !exitFlag; cores = cores * 2){
-      if (cores >= maxCores){
+    // new core component
+    const coreLabel = value =>{
+      let cores = 2 ** value;
+      if (cores > maxCores){
         cores = maxCores;
-        exitFlag = true;
       }
-      coresOptions.push({
+      return cores.toString();
+    }
+    const onCoreChanged = (e, value) =>{
+      if(!mounted){
+        return;
+      }
+      setCoreValue(value);
+      let cores = 2 ** value;
+      if (cores > maxCores){
+        cores = maxCores;
+      }
+      setRequest(previous => ({
+        ...previous,
+        cores: cores,
+      }));
+    };
+    let maxCoreRange = Math.ceil(Math.sqrt(maxCores));
+    let minCoreRange = 0;
+    let coreMarks = [];
+    for (let value = minCoreRange + 1; value <= maxCoreRange; ++value){
+      let cores = 2 ** value;
+      if (cores > maxCores){
+        cores = maxCores;
+      }
+      coreMarks.push({
+        value: value,
         label: cores.toString(),
-        value: cores.toString(),
       });
     }
+    
+    let coreComponent = {
+      type: 'slider',
+      label: texts.core + ` - ${request.cores}`,
+      onChange: onCoreChanged,
+      valueLabelFormat: coreLabel,
+      value: coreValue,
+      oneRow: true,
+      maxStep: maxCoreRange,
+      minStep: minCoreRange,
+      step: 1,
+      marks: coreMarks,
+      xs: 12,
+      sm: 6,
+      md: 4,
+    };
+
+    let exitFlag = false;
 
     const memoryBase = 512;
     const MiB = 1 << 20;
@@ -655,16 +697,7 @@ export default function CreateDialog(props){
         sm: 4,
         md: 3,
       },
-      {
-        type: "radio",
-        label: texts.core,
-        onChange: handleRequestPropsChanged('cores'),
-        value: request.cores,
-        oneRow: true,
-        options: coresOptions,
-        required: true,
-        xs: 12,
-      },
+      coreComponent,
       {
         type: "radio",
         label: texts.memory,
