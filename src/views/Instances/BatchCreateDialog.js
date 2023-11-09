@@ -35,7 +35,8 @@ import Typography from '@material-ui/core/Typography';
 import GridItem from "components/Grid/GridItem.js";
 import SingleRow from "components/Grid/SingleRow.js";
 import CustomDialog from "components/Dialog/CustomDialog.js";
-import {InputComponent} from "components/CustomInput/InputList";
+import { InputComponent } from "components/CustomInput/InputList";
+import InputList from "components/CustomInput/InputList";
 import {
   getAllComputePools, searchDiskImages, batchCreatingGuests, getSystemStatus,
   checkBatchCreatingStatus, querySystemTemplates
@@ -186,8 +187,8 @@ export default function CreateDialog(props) {
   const [maxCores, setMaxCores] = React.useState(defaultMaxCores);
   const [maxMemory, setMaxMemory] = React.useState(defaultMaxMemory);
   const [maxDisk, setMaxDisk] = React.useState(defaultMaxDisk);
-  const [ coreValue, setCoreValue ] = React.useState(0);
-  const [ memoryTick, setMemoryTick ] = React.useState(0);
+  const [coreValue, setCoreValue] = React.useState(0);
+  const [memoryTick, setMemoryTick] = React.useState(1);
   const texts = i18n[lang];
   const title = texts.title;
 
@@ -547,116 +548,116 @@ export default function CreateDialog(props) {
       default:
         //initial
         buttons = [cancelButton, confirmButton];
-         // new core component
-    const coreLabel = value =>{
-      let cores = 2 ** value;
-      if (cores > maxCores){
-        cores = maxCores;
-      }
-      return cores.toString();
-    }
+        // new core component
+        const coreLabel = value => {
+          let cores = 2 ** value;
+          if (cores > maxCores) {
+            cores = maxCores;
+          }
+          return cores.toString();
+        }
 
-    const onCoreChanged = (e, value) =>{
-      if(!mounted){
-        return;
-      }
-      setCoreValue(value);
-      let cores = 2 ** value;
-      if (cores > maxCores){
-        cores = maxCores;
-      }
-      setRequest(previous => ({
-        ...previous,
-        cores: cores,
-      }));
-    };
-    let maxCoreRange = Math.ceil(Math.sqrt(maxCores));
-    let minCoreRange = 0;
-    let coreMarks = [];
-    for (let value = minCoreRange + 1; value <= maxCoreRange; ++value){
-      let cores = 2 ** value;
-      if (cores > maxCores){
-        cores = maxCores;
-      }
-      coreMarks.push({
-        value: value,
-        label: cores.toString(),
-      });
-    }
-    
-    let coreComponent = {
-      type: 'slider',
-      label: texts.core + ` - ${request.cores}`,
-      onChange: onCoreChanged,
-      valueLabelFormat: coreLabel,
-      value: coreValue,
-      oneRow: true,
-      maxStep: maxCoreRange,
-      minStep: minCoreRange,
-      step: 1,
-      marks: coreMarks,
-      xs: 12,
-      sm: 6,
-      md: 4,
-    };
+        const onCoreChanged = (e, value) => {
+          if (!mounted) {
+            return;
+          }
+          setCoreValue(value);
+          let cores = 2 ** value;
+          if (cores > maxCores) {
+            cores = maxCores;
+          }
+          setRequest(previous => ({
+            ...previous,
+            cores: cores,
+          }));
+        };
+        let maxCoreRange = Math.ceil(Math.sqrt(maxCores));
+        let minCoreRange = 0;
+        let coreMarks = [];
+        for (let value = minCoreRange + 1; value <= maxCoreRange; ++value) {
+          let cores = 2 ** value;
+          if (cores > maxCores) {
+            cores = maxCores;
+          }
+          coreMarks.push({
+            value: value,
+            label: cores.toString(),
+          });
+        }
 
-    // new memory component
-    const memoryBase = 512;
-    const MiB = 1 << 20;
-    const GiB = 1 << 30;
-    const displayMemory = memory =>{
-      let label;
-      if (memory >= GiB){
-        label = memory / GiB + ' GB';
-      }else{
-        label = memory / MiB + ' MB';
-      }
-      return label;
-    }
+        let coreComponent = {
+          type: 'slider',
+          label: texts.core + ` - ${request.cores}`,
+          onChange: onCoreChanged,
+          valueLabelFormat: coreLabel,
+          value: coreValue,
+          oneRow: true,
+          maxStep: maxCoreRange,
+          minStep: minCoreRange,
+          step: 1,
+          marks: coreMarks,
+          xs: 12,
+          sm: 6,
+          md: 4,
+        };
 
-    const onMemoryChanged = (e, value) =>{
-      if(!mounted){
-        return;
-      }
-      setMemoryTick(value);
-      let memory = 2 ** value * memoryBase * MiB;
-      if (memory > maxMemory * GiB){
-        memory = maxMemory * GiB;
-      }
-      setRequest(previous => ({
-        ...previous,
-        memory: memory,
-      }));
-    };
-    let maxMemoryRange = Math.ceil(Math.sqrt(maxMemory));
-    let minMemoryRange = 0;
-    let memoryMarks = [];
-    for (let value = minMemoryRange + 1; value <= maxMemoryRange; ++value){
-      let memory = 2 ** value * memoryBase * MiB;
-      if (memory > maxMemory * GiB){
-        memory = maxMemory * GiB;
-      }
-      memoryMarks.push({
-        value: value,
-        label: displayMemory(memory),
-      });
-    }
-    let memoryLabel = texts.memory + ` - ${displayMemory(request.memory)}`;
-    let memoryComponent = {
-      type: 'slider',
-      label: memoryLabel,
-      onChange: onMemoryChanged,
-      valueLabelDisplay: 'off',
-      value: memoryTick,
-      oneRow: true,
-      maxStep: maxMemoryRange,
-      minStep: minMemoryRange,
-      step: 1,
-      marks: memoryMarks,
-      xs: 12,
-      sm: 8,
-      md: 6,
-    };
+        // new memory component
+        const memoryBase = 512;
+        const MiB = 1 << 20;
+        const GiB = 1 << 30;
+        const displayMemory = memory => {
+          let label;
+          if (memory >= GiB) {
+            label = memory / GiB + ' GB';
+          } else {
+            label = memory / MiB + ' MB';
+          }
+          return label;
+        }
+
+        const onMemoryChanged = (e, value) => {
+          if (!mounted) {
+            return;
+          }
+          setMemoryTick(value);
+          let memory = 2 ** value * memoryBase * MiB;
+          if (memory > maxMemory * GiB) {
+            memory = maxMemory * GiB;
+          }
+          setRequest(previous => ({
+            ...previous,
+            memory: memory,
+          }));
+        };
+        let maxMemoryRange = Math.ceil(Math.sqrt(maxMemory));
+        let minMemoryRange = 0;
+        let memoryMarks = [];
+        for (let value = minMemoryRange + 1; value <= maxMemoryRange; ++value) {
+          let memory = 2 ** value * memoryBase * MiB;
+          if (memory > maxMemory * GiB) {
+            memory = maxMemory * GiB;
+          }
+          memoryMarks.push({
+            value: value,
+            label: displayMemory(memory),
+          });
+        }
+        let memoryLabel = texts.memory + ` - ${displayMemory(request.memory)}`;
+        let memoryComponent = {
+          type: 'slider',
+          label: memoryLabel,
+          onChange: onMemoryChanged,
+          valueLabelDisplay: 'off',
+          value: memoryTick,
+          oneRow: true,
+          maxStep: maxMemoryRange,
+          minStep: minMemoryRange,
+          step: 1,
+          marks: memoryMarks,
+          xs: 12,
+          sm: 8,
+          md: 6,
+        };
 
         //system disk slider
         let systemDiskSlider;
@@ -816,6 +817,109 @@ export default function CreateDialog(props) {
           moduleOption = <GridItem />;
         }
 
+        const priorityOptions = [
+          {
+            value: 'high',
+            label: texts.cpuPriorityHigh,
+          },
+          {
+            value: 'medium',
+            label: texts.cpuPriorityMedium,
+          },
+          {
+            value: 'low',
+            label: texts.cpuPriorityLow,
+          },
+        ]
+
+        const maxIOPS = 2000;
+        const iopsAchor = [0, maxIOPS / 2, maxIOPS];
+        let iopsMarks = [];
+        iopsAchor.forEach(value => {
+          iopsMarks.push({
+            value: value,
+            label: value.toString(),
+          })
+        });
+
+        const maxBandwidth = 20;
+        const bandwidthAchor = [0, maxBandwidth / 2, maxBandwidth];
+        let bandwidthMarks = [];
+        bandwidthAchor.forEach(value => {
+          bandwidthMarks.push({
+            value: value,
+            label: 0 === value ? texts.noLimit : value.toString() + ' Mbit/s',
+          })
+        });
+
+        let iopsLabel, inboundLabel, outboundLabel;
+        if (0 === request.iops) {
+          iopsLabel = texts.iops + ' - ' + texts.noLimit;
+        } else {
+          if ('cn' === lang) {
+            iopsLabel = texts.iops + ' - ' + request.iops + '次请求/秒';
+          } else {
+            iopsLabel = texts.iops + ' - ' + request.iops + ' Operates/Second';
+          }
+        }
+        if (0 === request.inbound) {
+          inboundLabel = texts.inbound + ' - ' + texts.noLimit;
+        } else {
+          inboundLabel = texts.inbound + ' - ' + request.inbound + ' Mbit/s';
+        }
+        if (0 === request.outbound) {
+          outboundLabel = texts.outbound + ' - ' + texts.noLimit;
+        } else {
+          outboundLabel = texts.outbound + ' - ' + request.outbound + ' Mbit/s';
+        }
+
+        const qosComponents = [
+          {
+            type: "radio",
+            label: texts.cpuPriority,
+            onChange: handleRequestPropsChanged('priority'),
+            value: request.priority,
+            oneRow: true,
+            options: priorityOptions,
+            xs: 12,
+          },
+          {
+            type: 'slider',
+            label: iopsLabel,
+            onChange: handleSliderValueChanged('iops'),
+            value: request.iops,
+            oneRow: true,
+            maxStep: maxIOPS,
+            minStep: 0,
+            step: 10,
+            marks: iopsMarks,
+            xs: 12,
+          },
+          {
+            type: 'slider',
+            label: inboundLabel,
+            onChange: handleSliderValueChanged('inbound'),
+            value: request.inbound,
+            oneRow: true,
+            maxStep: maxBandwidth,
+            minStep: 0,
+            step: 2,
+            marks: bandwidthMarks,
+            xs: 12,
+          },
+          {
+            type: 'slider',
+            label: outboundLabel,
+            onChange: handleSliderValueChanged('outbound'),
+            value: request.outbound,
+            oneRow: true,
+            maxStep: maxBandwidth,
+            minStep: 0,
+            step: 2,
+            marks: bandwidthMarks,
+            xs: 12,
+          },
+        ];
 
         content = (
           <Grid container>
@@ -906,7 +1010,7 @@ export default function CreateDialog(props) {
               <GridItem xs={12}>
                 <Box m={0} pt={2}>
                   <FormControl component="fieldset" fullWidth>
-                    <InputComponent {...memoryComponent}/>
+                    <InputComponent {...memoryComponent} />
                   </FormControl>
                 </Box>
               </GridItem>
@@ -994,7 +1098,7 @@ export default function CreateDialog(props) {
             </SingleRow>
             {moduleOption}
             <SingleRow>
-              <GridItem xs={12} sm={8} md={6}>
+              <GridItem xs={12} sm={9} md={7}>
                 <Box m={0} pb={2}>
                   <Accordion>
                     <AccordionSummary
@@ -1003,65 +1107,9 @@ export default function CreateDialog(props) {
                       {texts.qos}
                     </AccordionSummary>
                     <AccordionDetails>
-                      <Grid container>
-                        <GridItem xs={12}>
-                          <Box m={1} p={2}>
-                            <FormControl component="fieldset" fullWidth>
-                              <FormLabel component="legend">{texts.cpuPriority}</FormLabel>
-                              <RadioGroup aria-label={texts.cpuPriority} value={request.priority} onChange={handleRequestPropsChanged('priority')} row>
-                                <FormControlLabel value='high' control={<Radio />} label={texts.cpuPriorityHigh} key='high' />
-                                <FormControlLabel value='medium' control={<Radio />} label={texts.cpuPriorityMedium} key='medium' />
-                                <FormControlLabel value='low' control={<Radio />} label={texts.cpuPriorityLow} key='low' />
-                              </RadioGroup>
-                            </FormControl>
-                          </Box>
-                        </GridItem>
-                        <GridItem xs={12}>
-                          <Box m={1} p={2}>
-                            <FormLabel component="legend">{texts.iops}</FormLabel>
-                            <Slider
-                              color="secondary"
-                              value={request.iops}
-                              max={2000}
-                              min={0}
-                              step={10}
-                              valueLabelDisplay="auto"
-                              marks={[{ value: 0, label: texts.noLimit }, { value: 2000, label: 2000 }]}
-                              onChange={handleSliderValueChanged('iops')}
-                            />
-                          </Box>
-                        </GridItem>
-                        <GridItem xs={12}>
-                          <Box m={1} p={2}>
-                            <FormLabel component="legend">{texts.inbound}</FormLabel>
-                            <Slider
-                              color="secondary"
-                              value={request.inbound}
-                              max={20}
-                              min={0}
-                              step={2}
-                              valueLabelDisplay="auto"
-                              marks={[{ value: 0, label: texts.noLimit }, { value: 20, label: '20 Mbit/s' }]}
-                              onChange={handleSliderValueChanged('inbound')}
-                            />
-                          </Box>
-                        </GridItem>
-                        <GridItem xs={12}>
-                          <Box m={1} p={2}>
-                            <FormLabel component="legend">{texts.outbound}</FormLabel>
-                            <Slider
-                              color="secondary"
-                              value={request.outbound}
-                              max={20}
-                              min={0}
-                              step={2}
-                              valueLabelDisplay="auto"
-                              marks={[{ value: 0, label: texts.noLimit }, { value: 20, label: '20 Mbit/s' }]}
-                              onChange={handleSliderValueChanged('outbound')}
-                            />
-                          </Box>
-                        </GridItem>
-                      </Grid>
+                      <Box m={1} pt={2}>
+                        <InputList inputs={qosComponents} />
+                      </Box>
                     </AccordionDetails>
                   </Accordion>
                 </Box>

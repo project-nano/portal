@@ -21,11 +21,13 @@ import GridItem from "components/Grid/GridItem.js";
 import SingleRow from "components/Grid/SingleRow.js";
 import InputList from "components/CustomInput/InputList";
 import CustomDialog from "components/Dialog/CustomDialog.js";
-import { getAllComputePools, searchDiskImages, createInstance, getSystemStatus,
-  getInstanceConfig, querySystemTemplates, searchSecurityPolicyGroups } from 'nano_api.js';
+import {
+  getAllComputePools, searchDiskImages, createInstance, getSystemStatus,
+  getInstanceConfig, querySystemTemplates, searchSecurityPolicyGroups
+} from 'nano_api.js';
 
 const i18n = {
-  'en':{
+  'en': {
     title: 'Create Instance',
     name: 'Instance Name',
     resourcePool: 'Resource Pool',
@@ -59,7 +61,7 @@ const i18n = {
     cancel: 'Cancel',
     confirm: 'Confirm',
   },
-  'cn':{
+  'cn': {
     title: '创建云主机',
     name: '云主机名称',
     resourcePool: '计算资源池',
@@ -95,7 +97,7 @@ const i18n = {
   },
 };
 
-export default function CreateDialog(props){
+export default function CreateDialog(props) {
   const defaultMaxCores = 16;
   const defaultMaxMemory = 24;
   const defaultMaxDisk = 32;
@@ -124,28 +126,28 @@ export default function CreateDialog(props){
     inbound: 0,
     outbound: 0,
   };
-  const [ initialed, setInitialed ] = React.useState(false);
-  const [ creating, setCreating ] = React.useState(false);
-  const [ progress, setProgress ] = React.useState(0);
-  const [ operatable, setOperatable ] = React.useState(true);
-  const [ prompt, setPrompt ] = React.useState('');
-  const [ mounted, setMounted ] = React.useState(false);
-  const [ request, setRequest ] = React.useState(defaultValues);
-  const [ options, setOptions ] = React.useState({
+  const [initialed, setInitialed] = React.useState(false);
+  const [creating, setCreating] = React.useState(false);
+  const [progress, setProgress] = React.useState(0);
+  const [operatable, setOperatable] = React.useState(true);
+  const [prompt, setPrompt] = React.useState('');
+  const [mounted, setMounted] = React.useState(false);
+  const [request, setRequest] = React.useState(defaultValues);
+  const [options, setOptions] = React.useState({
     pools: [],
     images: [],
     versions: [],
     policies: [],
   });
-  const [ maxCores, setMaxCores ] = React.useState(defaultMaxCores);
-  const [ maxMemory, setMaxMemory ] = React.useState(defaultMaxMemory);
-  const [ maxDisk, setMaxDisk ] = React.useState(defaultMaxDisk);
-  const [ coreValue, setCoreValue ] = React.useState(0);
-  const [ memoryTick, setMemoryTick ] = React.useState(0);
+  const [maxCores, setMaxCores] = React.useState(defaultMaxCores);
+  const [maxMemory, setMaxMemory] = React.useState(defaultMaxMemory);
+  const [maxDisk, setMaxDisk] = React.useState(defaultMaxDisk);
+  const [coreValue, setCoreValue] = React.useState(0);
+  const [memoryTick, setMemoryTick] = React.useState(1);
   const texts = i18n[lang];
   const title = texts.title;
-  const onCreateFail = React.useCallback(msg =>{
-    if(!mounted){
+  const onCreateFail = React.useCallback(msg => {
+    if (!mounted) {
       return;
     }
     setOperatable(true);
@@ -160,13 +162,13 @@ export default function CreateDialog(props){
     setProgress(0);
   }
 
-  const closeDialog = ()=>{
+  const closeDialog = () => {
     resetDialog();
     onCancel();
   }
 
-  const onCreateSuccess = result =>{
-    if(!mounted){
+  const onCreateSuccess = result => {
+    if (!mounted) {
       return;
     }
     setOperatable(true);
@@ -174,8 +176,8 @@ export default function CreateDialog(props){
     onSuccess(result.id);
   }
 
-  const onCreateAccept = instanceID =>{
-    if(!mounted){
+  const onCreateAccept = instanceID => {
+    if (!mounted) {
       return;
     }
     setCreating(true);
@@ -185,12 +187,12 @@ export default function CreateDialog(props){
     }, checkInterval);
   }
 
-  const checkCreatingProgress = instanceID =>{
-    if(!mounted){
+  const checkCreatingProgress = instanceID => {
+    if (!mounted) {
       return;
     }
-    const onCreating = progress =>{
-      if(!mounted){
+    const onCreating = progress => {
+      if (!mounted) {
         return;
       }
       setProgress(progress);
@@ -201,51 +203,51 @@ export default function CreateDialog(props){
     getInstanceConfig(instanceID, onCreateSuccess, onCreateFail, onCreating);
   }
 
-  const handleConfirm = () =>{
+  const handleConfirm = () => {
     setPrompt('');
     setOperatable(false);
-    if (!request.name){
+    if (!request.name) {
       onCreateFail('instance name required');
       return;
     }
-    if (!request.pool){
+    if (!request.pool) {
       onCreateFail('must specify target pool');
       return;
     }
     var cores = Number(request.cores);
-    if(Number.isNaN(cores)){
+    if (Number.isNaN(cores)) {
       onCreateFail('invalid cores: ' + request.cores);
       return;
     }
     var memory = Number(request.memory);
-    if(Number.isNaN(memory)){
+    if (Number.isNaN(memory)) {
       onCreateFail('invalid memory: ' + request.memory);
       return;
     }
     const GiB = 1 << 30;
     var disks = [request.system_disk * GiB];
-    if (0 !== request.data_disk){
+    if (0 !== request.data_disk) {
       disks.push(request.data_disk * GiB);
     }
     var systemVersion = request.system_template;
     let fromImage;
-    if (defaultOption === request.from_image){
+    if (defaultOption === request.from_image) {
       fromImage = '';
-    }else{
+    } else {
       fromImage = request.from_image;
     }
     var modules = [];
     var ciEnabled = false;
-    request.modules.forEach( (checked, name) =>{
-      if(checked){
+    request.modules.forEach((checked, name) => {
+      if (checked) {
         modules.push(name);
-        if (ciModuleName === name){
+        if (ciModuleName === name) {
           ciEnabled = true;
         }
       }
     });
     var cloudInit = null;
-    if(ciEnabled){
+    if (ciEnabled) {
       cloudInit = {
         admin_name: request.module_cloud_init_admin_name,
         admin_secret: request.module_cloud_init_admin_password,
@@ -266,8 +268,8 @@ export default function CreateDialog(props){
       onCreateSuccess, onCreateFail);
   }
 
-  const handleRequestPropsChanged = name => e =>{
-    if(!mounted){
+  const handleRequestPropsChanged = name => e => {
+    if (!mounted) {
       return;
     }
     var value = e.target.value
@@ -277,8 +279,8 @@ export default function CreateDialog(props){
     }));
   };
 
-  const handleSliderValueChanged = name => (e, value) =>{
-    if(!mounted){
+  const handleSliderValueChanged = name => (e, value) => {
+    if (!mounted) {
       return;
     }
     setRequest(previous => ({
@@ -287,8 +289,8 @@ export default function CreateDialog(props){
     }));
   };
 
-  const handleCheckedValueChanged = name => e =>{
-    if(!mounted){
+  const handleCheckedValueChanged = name => e => {
+    if (!mounted) {
       return;
     }
     var value = e.target.checked
@@ -298,8 +300,8 @@ export default function CreateDialog(props){
     }));
   };
 
-  const handleCheckedGroupChanged = (groupName, propertyName) => e =>{
-    if(!mounted){
+  const handleCheckedGroupChanged = (groupName, propertyName) => e => {
+    if (!mounted) {
       return;
     }
     var checked = e.target.checked
@@ -309,8 +311,8 @@ export default function CreateDialog(props){
     }));
   };
 
-  React.useEffect(()=>{
-    if (!open){
+  React.useEffect(() => {
+    if (!open) {
       return;
     }
     // var session = getLoggedSession();
@@ -328,11 +330,11 @@ export default function CreateDialog(props){
     var securityPolicies = [];
 
     setMounted(true);
-    const onQueryPoliciesSuccess = datalist =>{
-      if(!mounted){
+    const onQueryPoliciesSuccess = datalist => {
+      if (!mounted) {
         return;
       }
-      datalist.forEach(({id, name}) =>{
+      datalist.forEach(({ id, name }) => {
         securityPolicies.push({
           label: name,
           value: id,
@@ -346,11 +348,11 @@ export default function CreateDialog(props){
       });
       setInitialed(true);
     }
-    const onQueryTemplateSuccess = dataList =>{
-      if(!mounted){
+    const onQueryTemplateSuccess = dataList => {
+      if (!mounted) {
         return;
       }
-      dataList.forEach(({id, name}) =>{
+      dataList.forEach(({ id, name }) => {
         templateOptions.push({
           label: name,
           value: id,
@@ -360,11 +362,11 @@ export default function CreateDialog(props){
         onQueryPoliciesSuccess, onCreateFail);
     }
 
-    const onQueryImageSuccess = dataList =>{
-      if(!mounted){
+    const onQueryImageSuccess = dataList => {
+      if (!mounted) {
         return;
       }
-      dataList.forEach(({name, id})=>{
+      dataList.forEach(({ name, id }) => {
         imageOptions.push({
           label: name,
           value: id,
@@ -374,11 +376,11 @@ export default function CreateDialog(props){
       querySystemTemplates(onQueryTemplateSuccess, onCreateFail);
     };
 
-    const onQueryPoolSuccess = dataList =>{
-      if(!mounted){
+    const onQueryPoolSuccess = dataList => {
+      if (!mounted) {
         return;
       }
-      dataList.forEach(({name})=>{
+      dataList.forEach(({ name }) => {
         poolOptions.push({
           label: name,
           value: name,
@@ -388,24 +390,24 @@ export default function CreateDialog(props){
       searchDiskImages(onQueryImageSuccess, onCreateFail);
     };
 
-    const onGetSystemStatusSuccess = status =>{
-      if(!mounted){
+    const onGetSystemStatusSuccess = status => {
+      if (!mounted) {
         return;
       }
-      if (status.max_cores && status.max_cores > 0){
+      if (status.max_cores && status.max_cores > 0) {
         setMaxCores(status.max_cores);
       }
-      if (status.max_memory && status.max_memory > 0){
+      if (status.max_memory && status.max_memory > 0) {
         setMaxMemory(status.max_memory);
       }
-      if (status.max_disk && status.max_disk > 0){
+      if (status.max_disk && status.max_disk > 0) {
         setMaxDisk(status.max_disk);
       }
       getAllComputePools(onQueryPoolSuccess, onCreateFail);
     }
 
     getSystemStatus(onGetSystemStatusSuccess, onCreateFail);
-    
+
     return () => {
       setMounted(false);
     }
@@ -418,9 +420,9 @@ export default function CreateDialog(props){
     onClick: closeDialog,
   }];
   let content;
-  if (!initialed){
-    content = <Skeleton variant="rect" style={{height: '10rem'}}/>;
-  }else if (creating){
+  if (!initialed) {
+    content = <Skeleton variant="rect" style={{ height: '10rem' }} />;
+  } else if (creating) {
     content = (
       <Grid container>
         <SingleRow>
@@ -437,23 +439,23 @@ export default function CreateDialog(props){
         </SingleRow>
       </Grid>
     )
-  }else{
+  } else {
     // new core component
-    const coreLabel = value =>{
+    const coreLabel = value => {
       let cores = 2 ** value;
-      if (cores > maxCores){
+      if (cores > maxCores) {
         cores = maxCores;
       }
       return cores.toString();
     }
 
-    const onCoreChanged = (e, value) =>{
-      if(!mounted){
+    const onCoreChanged = (e, value) => {
+      if (!mounted) {
         return;
       }
       setCoreValue(value);
       let cores = 2 ** value;
-      if (cores > maxCores){
+      if (cores > maxCores) {
         cores = maxCores;
       }
       setRequest(previous => ({
@@ -464,9 +466,9 @@ export default function CreateDialog(props){
     let maxCoreRange = Math.ceil(Math.sqrt(maxCores));
     let minCoreRange = 0;
     let coreMarks = [];
-    for (let value = minCoreRange + 1; value <= maxCoreRange; ++value){
+    for (let value = minCoreRange + 1; value <= maxCoreRange; ++value) {
       let cores = 2 ** value;
-      if (cores > maxCores){
+      if (cores > maxCores) {
         cores = maxCores;
       }
       coreMarks.push({
@@ -474,7 +476,7 @@ export default function CreateDialog(props){
         label: cores.toString(),
       });
     }
-    
+
     let coreComponent = {
       type: 'slider',
       label: texts.core + ` - ${request.cores}`,
@@ -496,23 +498,23 @@ export default function CreateDialog(props){
     const MiB = 1 << 20;
     const GiB = 1 << 30;
 
-    const displayMemory = memory =>{
+    const displayMemory = memory => {
       let label;
-      if (memory >= GiB){
+      if (memory >= GiB) {
         label = memory / GiB + ' GB';
-      }else{
+      } else {
         label = memory / MiB + ' MB';
       }
       return label;
     }
 
-    const onMemoryChanged = (e, value) =>{
-      if(!mounted){
+    const onMemoryChanged = (e, value) => {
+      if (!mounted) {
         return;
       }
       setMemoryTick(value);
       let memory = 2 ** value * memoryBase * MiB;
-      if (memory > maxMemory * GiB){
+      if (memory > maxMemory * GiB) {
         memory = maxMemory * GiB;
       }
       setRequest(previous => ({
@@ -523,9 +525,9 @@ export default function CreateDialog(props){
     let maxMemoryRange = Math.ceil(Math.sqrt(maxMemory));
     let minMemoryRange = 0;
     let memoryMarks = [];
-    for (let value = minMemoryRange + 1; value <= maxMemoryRange; ++value){
+    for (let value = minMemoryRange + 1; value <= maxMemoryRange; ++value) {
       let memory = 2 ** value * memoryBase * MiB;
-      if (memory > maxMemory * GiB){
+      if (memory > maxMemory * GiB) {
         memory = maxMemory * GiB;
       }
       memoryMarks.push({
@@ -559,7 +561,7 @@ export default function CreateDialog(props){
       let midRange = maxRange >> 1;
       const markValues = [minRange, midRange, maxRange];
       var systemMarks = [];
-      markValues.forEach(value =>{
+      markValues.forEach(value => {
         systemMarks.push({
           value: value,
           label: value + ' GB',
@@ -589,16 +591,16 @@ export default function CreateDialog(props){
       let midRange = maxRange >> 1;
       const markValues = [minRange, midRange, maxRange];
       let dataMarks = [];
-      markValues.forEach(value =>{
+      markValues.forEach(value => {
         dataMarks.push({
           value: value,
           label: value + ' GB',
         })
       });
       let dataDiskLabel;
-      if (0 === request.data_disk){
+      if (0 === request.data_disk) {
         dataDiskLabel = texts.dataDisk + ' - ' + texts.noDataDisk;
-      }else{
+      } else {
         dataDiskLabel = texts.dataDisk + ` - ${request.data_disk} GB`;
       }
       dataDiskSlider = {
@@ -618,7 +620,7 @@ export default function CreateDialog(props){
     }
 
     let moduleOption;
-    if (request.system_template && defaultOption !== request.from_image){
+    if (request.system_template && defaultOption !== request.from_image) {
       var modules = [{
         value: 'qemu',
         label: 'QEMU-Guest-Agent',
@@ -629,7 +631,7 @@ export default function CreateDialog(props){
       }
       ];
       let ciOptions;
-      if (request.modules.get(ciModuleName)){
+      if (request.modules.get(ciModuleName)) {
         const ciComponents = [
           {
             type: "text",
@@ -661,11 +663,11 @@ export default function CreateDialog(props){
         ciOptions = (
           <GridItem xs={12} sm={8} md={6}>
             <FormLabel component="legend">{texts.ciOptions}</FormLabel>
-            <InputList inputs={ciComponents}/>
+            <InputList inputs={ciComponents} />
           </GridItem>
         )
-      }else{
-        ciOptions = <GridItem/>;
+      } else {
+        ciOptions = <GridItem />;
       }
 
       moduleOption = (
@@ -677,22 +679,22 @@ export default function CreateDialog(props){
                 <FormGroup>
                   <Grid container>
                     {
-                        modules.map(module => {
-                          let checked;
-                          if (request.modules.has(module.value)){
-                            checked = request.modules.get(module.value);
-                          }else{
-                            checked = false;
-                          }
-                          return (
-                            <GridItem xs={12} sm={6} md={4} key={module.value}>
-                              <FormControlLabel
-                                control={<Checkbox checked={checked} onChange={handleCheckedGroupChanged('modules', module.value)} value={module.value}/>}
-                                label={module.label}
-                              />
-                            </GridItem>
-                          );
-                        })
+                      modules.map(module => {
+                        let checked;
+                        if (request.modules.has(module.value)) {
+                          checked = request.modules.get(module.value);
+                        } else {
+                          checked = false;
+                        }
+                        return (
+                          <GridItem xs={12} sm={6} md={4} key={module.value}>
+                            <FormControlLabel
+                              control={<Checkbox checked={checked} onChange={handleCheckedGroupChanged('modules', module.value)} value={module.value} />}
+                              label={module.label}
+                            />
+                          </GridItem>
+                        );
+                      })
                     }
                   </Grid>
                 </FormGroup>
@@ -703,8 +705,8 @@ export default function CreateDialog(props){
         </SingleRow>
       )
 
-    }else{
-      moduleOption = <GridItem/>;
+    } else {
+      moduleOption = <GridItem />;
     }
 
     var inputComponents = [
@@ -770,7 +772,7 @@ export default function CreateDialog(props){
         md: 4,
       },
     ];
-    if (options.policies && 0 !== options.policies.length){
+    if (options.policies && 0 !== options.policies.length) {
       inputComponents.push({
         type: "select",
         label: texts.securityPolicy,
@@ -798,6 +800,48 @@ export default function CreateDialog(props){
         label: texts.cpuPriorityLow,
       },
     ]
+
+    const maxIOPS = 2000;
+    const iopsAchor = [0, maxIOPS / 2, maxIOPS];
+    let iopsMarks = [];
+    iopsAchor.forEach(value => {
+      iopsMarks.push({
+        value: value,
+        label: value.toString(),
+      })
+    });
+
+    const maxBandwidth = 20;
+    const bandwidthAchor = [0, maxBandwidth / 2, maxBandwidth];
+    let bandwidthMarks = [];
+    bandwidthAchor.forEach(value => {
+      bandwidthMarks.push({
+        value: value,
+        label: 0 === value ? texts.noLimit : value.toString() + ' Mbit/s',
+      })
+    });
+
+    let iopsLabel, inboundLabel, outboundLabel;
+    if (0 === request.iops) {
+      iopsLabel = texts.iops + ' - ' + texts.noLimit;
+    } else{
+      if ('cn' === lang) {
+        iopsLabel = texts.iops + ' - ' + request.iops + '次请求/秒';
+      }else{
+        iopsLabel = texts.iops + ' - ' + request.iops + ' Operates/Second';
+      }
+    }
+    if (0 === request.inbound) {
+      inboundLabel = texts.inbound + ' - ' + texts.noLimit;
+    } else{
+      inboundLabel = texts.inbound + ' - ' + request.inbound + ' Mbit/s';
+    }
+    if (0 === request.outbound) {
+      outboundLabel = texts.outbound + ' - ' + texts.noLimit;
+    } else{
+      outboundLabel = texts.outbound + ' - ' + request.outbound + ' Mbit/s';
+    }
+
     const qosComponents = [
       {
         type: "radio",
@@ -810,73 +854,74 @@ export default function CreateDialog(props){
       },
       {
         type: 'slider',
-        label: texts.iops,
+        label: iopsLabel,
         onChange: handleSliderValueChanged('iops'),
         value: request.iops,
         oneRow: true,
-        maxStep: 2000,
+        maxStep: maxIOPS,
         minStep: 0,
         step: 10,
-        marks: [{value: 0, label: texts.noLimit}, {value: 2000, label: '2000'}],
+        marks: iopsMarks,
         xs: 12,
       },
       {
         type: 'slider',
-        label: texts.inbound,
+        label: inboundLabel,
         onChange: handleSliderValueChanged('inbound'),
         value: request.inbound,
         oneRow: true,
-        maxStep: 20,
+        maxStep: maxBandwidth,
         minStep: 0,
         step: 2,
-        marks: [{value: 0, label: texts.noLimit}, {value: 20, label: '20 Mbit/s'}],
+        marks: bandwidthMarks,
         xs: 12,
       },
       {
         type: 'slider',
-        label: texts.outbound,
+        label: outboundLabel,
         onChange: handleSliderValueChanged('outbound'),
         value: request.outbound,
         oneRow: true,
-        maxStep: 20,
+        maxStep: maxBandwidth,
         minStep: 0,
         step: 2,
-        marks: [{value: 0, label: texts.noLimit}, {value: 20, label: '20 Mbit/s'}],
+        marks: bandwidthMarks,
         xs: 12,
       },
     ];
+
     content = (
       <Grid container>
         <Box m={1} pt={2}>
-          <InputList inputs={inputComponents}/>
+          <InputList inputs={inputComponents} />
         </Box>
         {moduleOption}
         <SingleRow>
           <GridItem xs={12} sm={9} md={7}>
             <Box m={0} pb={2}>
-            <Accordion>
-              <AccordionSummary
-                expandIcon={<ExpandMoreIcon />}
-              >
-                {texts.qos}
-              </AccordionSummary>
-              <AccordionDetails>
-                <Box m={1} pt={2}>
-                  <InputList inputs={qosComponents}/>
-                </Box>
-              </AccordionDetails>
-            </Accordion>
-          </Box>
-        </GridItem>
-      </SingleRow>
-    </Grid>
+              <Accordion>
+                <AccordionSummary
+                  expandIcon={<ExpandMoreIcon />}
+                >
+                  {texts.qos}
+                </AccordionSummary>
+                <AccordionDetails>
+                  <Box m={1} pt={2}>
+                    <InputList inputs={qosComponents} />
+                  </Box>
+                </AccordionDetails>
+              </Accordion>
+            </Box>
+          </GridItem>
+        </SingleRow>
+      </Grid>
     );
     buttons.push({
-        color: 'info',
-        label: texts.confirm,
-        onClick: handleConfirm,
-      });
+      color: 'info',
+      label: texts.confirm,
+      onClick: handleConfirm,
+    });
   }
   return <CustomDialog size='md' open={open} prompt={prompt} promptPosition="top"
-    hideBackdrop title={title}  buttons={buttons} content={content} operatable={operatable}/>;
+    hideBackdrop title={title} buttons={buttons} content={content} operatable={operatable} />;
 };
