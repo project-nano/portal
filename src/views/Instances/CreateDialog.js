@@ -141,6 +141,7 @@ export default function CreateDialog(props){
   const [ maxMemory, setMaxMemory ] = React.useState(defaultMaxMemory);
   const [ maxDisk, setMaxDisk ] = React.useState(defaultMaxDisk);
   const [ coreValue, setCoreValue ] = React.useState(0);
+  const [ memoryTick, setMemoryTick ] = React.useState(0);
   const texts = i18n[lang];
   const title = texts.title;
   const onCreateFail = React.useCallback(msg =>{
@@ -445,6 +446,7 @@ export default function CreateDialog(props){
       }
       return cores.toString();
     }
+
     const onCoreChanged = (e, value) =>{
       if(!mounted){
         return;
@@ -489,32 +491,64 @@ export default function CreateDialog(props){
       md: 4,
     };
 
-    let exitFlag = false;
-
+    // new memory component
     const memoryBase = 512;
     const MiB = 1 << 20;
     const GiB = 1 << 30;
-    let memoryOptions = [];
-    const memoryLimit = maxMemory * GiB;
-    exitFlag = false;
 
-    for (let value = memoryBase * MiB; !exitFlag; value = value * 2){
-      if (value >= memoryLimit){
-        value = memoryLimit;
-        exitFlag = true;
-      }
-      let name;
-      if (value >= GiB){
-        name = value / GiB + ' GB';
+    const displayMemory = memory =>{
+      let label;
+      if (memory >= GiB){
+        label = memory / GiB + ' GB';
       }else{
-        name = value / MiB + ' MB';
+        label = memory / MiB + ' MB';
       }
-      memoryOptions.push({
-        label: name,
-        value: value.toString(),
-      });
-      
+      return label;
     }
+
+    const onMemoryChanged = (e, value) =>{
+      if(!mounted){
+        return;
+      }
+      setMemoryTick(value);
+      let memory = 2 ** value * memoryBase * MiB;
+      if (memory > maxMemory * GiB){
+        memory = maxMemory * GiB;
+      }
+      setRequest(previous => ({
+        ...previous,
+        memory: memory,
+      }));
+    };
+    let maxMemoryRange = Math.ceil(Math.sqrt(maxMemory));
+    let minMemoryRange = 0;
+    let memoryMarks = [];
+    for (let value = minMemoryRange + 1; value <= maxMemoryRange; ++value){
+      let memory = 2 ** value * memoryBase * MiB;
+      if (memory > maxMemory * GiB){
+        memory = maxMemory * GiB;
+      }
+      memoryMarks.push({
+        value: value,
+        label: displayMemory(memory),
+      });
+    }
+    let memoryLabel = texts.memory + ` - ${displayMemory(request.memory)}`;
+    let memoryComponent = {
+      type: 'slider',
+      label: memoryLabel,
+      onChange: onMemoryChanged,
+      valueLabelDisplay: 'off',
+      value: memoryTick,
+      oneRow: true,
+      maxStep: maxMemoryRange,
+      minStep: minMemoryRange,
+      step: 1,
+      marks: memoryMarks,
+      xs: 12,
+      sm: 8,
+      md: 6,
+    };
 
     //system disk slider
     let systemDiskSlider;
@@ -698,16 +732,7 @@ export default function CreateDialog(props){
         md: 3,
       },
       coreComponent,
-      {
-        type: "radio",
-        label: texts.memory,
-        onChange: handleRequestPropsChanged('memory'),
-        value: request.memory,
-        oneRow: true,
-        options: memoryOptions,
-        required: true,
-        xs: 12,
-      },
+      memoryComponent,
       systemDiskSlider,
       dataDiskSlider,
       {

@@ -18,7 +18,7 @@ import Slider from '@material-ui/core/Slider';
 
 export function InputComponent(props){
   var { type, label, value, onChange, required, oneRow, disabled, options,
-    on, off, rows, step, maxStep, minStep, marks, helper, valueLabelFormat,
+    on, off, rows, step, maxStep, minStep, marks, helper, valueLabelFormat, valueLabelDisplay,
     ...rest } = props;
   let component;
   switch (type) {
@@ -182,6 +182,10 @@ export function InputComponent(props){
       break;
     case "slider":
     // const { step, maxStep, minStep, marks } = props;
+      if (!valueLabelDisplay){
+        //default value
+        valueLabelDisplay = 'auto';
+      }
       component = (
         <Box m={0} pt={2}>
           <FormLabel component="legend">{label}</FormLabel>
@@ -191,7 +195,7 @@ export function InputComponent(props){
             max={maxStep}
             min={minStep}
             step={step}
-            valueLabelDisplay="auto"
+            valueLabelDisplay={valueLabelDisplay}
             marks={marks}
             onChange={onChange}
             valueLabelFormat={valueLabelFormat}
@@ -225,6 +229,7 @@ InputComponent.propTypes = {
   value: PropTypes.any,
   onChange: PropTypes.func,
   valueLabelFormat: PropTypes.func,
+  valueLabelDisplay: PropTypes.string,
   required: PropTypes.bool,
   oneRow: PropTypes.bool,
   xs: PropTypes.number,

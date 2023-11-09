@@ -35,6 +35,7 @@ import Typography from '@material-ui/core/Typography';
 import GridItem from "components/Grid/GridItem.js";
 import SingleRow from "components/Grid/SingleRow.js";
 import CustomDialog from "components/Dialog/CustomDialog.js";
+import {InputComponent} from "components/CustomInput/InputList";
 import {
   getAllComputePools, searchDiskImages, batchCreatingGuests, getSystemStatus,
   checkBatchCreatingStatus, querySystemTemplates
@@ -185,6 +186,8 @@ export default function CreateDialog(props) {
   const [maxCores, setMaxCores] = React.useState(defaultMaxCores);
   const [maxMemory, setMaxMemory] = React.useState(defaultMaxMemory);
   const [maxDisk, setMaxDisk] = React.useState(defaultMaxDisk);
+  const [ coreValue, setCoreValue ] = React.useState(0);
+  const [ memoryTick, setMemoryTick ] = React.useState(0);
   const texts = i18n[lang];
   const title = texts.title;
 
@@ -544,43 +547,117 @@ export default function CreateDialog(props) {
       default:
         //initial
         buttons = [cancelButton, confirmButton];
-        let coresOptions = [];
-        let exitFlag = false;
-        for (let cores = 1; !exitFlag; cores = cores * 2) {
-          if (cores >= maxCores) {
-            cores = maxCores;
-            exitFlag = true;
-          }
-          coresOptions.push({
-            label: cores.toString(),
-            value: cores.toString(),
-          });
-        }
+         // new core component
+    const coreLabel = value =>{
+      let cores = 2 ** value;
+      if (cores > maxCores){
+        cores = maxCores;
+      }
+      return cores.toString();
+    }
 
-        const memoryBase = 512;
-        const MiB = 1 << 20;
-        const GiB = 1 << 30;
-        let memoryOptions = [];
-        const memoryLimit = maxMemory * GiB;
-        exitFlag = false;
+    const onCoreChanged = (e, value) =>{
+      if(!mounted){
+        return;
+      }
+      setCoreValue(value);
+      let cores = 2 ** value;
+      if (cores > maxCores){
+        cores = maxCores;
+      }
+      setRequest(previous => ({
+        ...previous,
+        cores: cores,
+      }));
+    };
+    let maxCoreRange = Math.ceil(Math.sqrt(maxCores));
+    let minCoreRange = 0;
+    let coreMarks = [];
+    for (let value = minCoreRange + 1; value <= maxCoreRange; ++value){
+      let cores = 2 ** value;
+      if (cores > maxCores){
+        cores = maxCores;
+      }
+      coreMarks.push({
+        value: value,
+        label: cores.toString(),
+      });
+    }
+    
+    let coreComponent = {
+      type: 'slider',
+      label: texts.core + ` - ${request.cores}`,
+      onChange: onCoreChanged,
+      valueLabelFormat: coreLabel,
+      value: coreValue,
+      oneRow: true,
+      maxStep: maxCoreRange,
+      minStep: minCoreRange,
+      step: 1,
+      marks: coreMarks,
+      xs: 12,
+      sm: 6,
+      md: 4,
+    };
 
-        for (let value = memoryBase * MiB; !exitFlag; value = value * 2) {
-          if (value >= memoryLimit) {
-            value = memoryLimit;
-            exitFlag = true;
-          }
-          let name;
-          if (value >= GiB) {
-            name = value / GiB + ' GB';
-          } else {
-            name = value / MiB + ' MB';
-          }
-          memoryOptions.push({
-            label: name,
-            value: value.toString(),
-          });
+    // new memory component
+    const memoryBase = 512;
+    const MiB = 1 << 20;
+    const GiB = 1 << 30;
+    const displayMemory = memory =>{
+      let label;
+      if (memory >= GiB){
+        label = memory / GiB + ' GB';
+      }else{
+        label = memory / MiB + ' MB';
+      }
+      return label;
+    }
 
-        }
+    const onMemoryChanged = (e, value) =>{
+      if(!mounted){
+        return;
+      }
+      setMemoryTick(value);
+      let memory = 2 ** value * memoryBase * MiB;
+      if (memory > maxMemory * GiB){
+        memory = maxMemory * GiB;
+      }
+      setRequest(previous => ({
+        ...previous,
+        memory: memory,
+      }));
+    };
+    let maxMemoryRange = Math.ceil(Math.sqrt(maxMemory));
+    let minMemoryRange = 0;
+    let memoryMarks = [];
+    for (let value = minMemoryRange + 1; value <= maxMemoryRange; ++value){
+      let memory = 2 ** value * memoryBase * MiB;
+      if (memory > maxMemory * GiB){
+        memory = maxMemory * GiB;
+      }
+      memoryMarks.push({
+        value: value,
+        label: displayMemory(memory),
+      });
+    }
+    let memoryLabel = texts.memory + ` - ${displayMemory(request.memory)}`;
+    let memoryComponent = {
+      type: 'slider',
+      label: memoryLabel,
+      onChange: onMemoryChanged,
+      valueLabelDisplay: 'off',
+      value: memoryTick,
+      oneRow: true,
+      maxStep: maxMemoryRange,
+      minStep: minMemoryRange,
+      step: 1,
+      marks: memoryMarks,
+      xs: 12,
+      sm: 8,
+      md: 6,
+    };
+
         //system disk slider
         let systemDiskSlider;
         let systemDiskLabel = texts.systemDisk + ` - ${request.system_disk} GB`;
@@ -822,28 +899,14 @@ export default function CreateDialog(props) {
               <GridItem xs={12}>
                 <Box m={0} pt={2}>
                   <FormControl component="fieldset" fullWidth>
-                    <FormLabel component="legend">{texts.core}</FormLabel>
-                    <RadioGroup aria-label={texts.core} name="cores" value={request.cores} onChange={handleRequestPropsChanged('cores')} row>
-                      <Grid container>
-                        {
-                          coresOptions.map(option => <GridItem xs={3} sm={2} md={1} key={option.value}><FormControlLabel value={option.value} control={<Radio />} label={option.label} /></GridItem>)
-                        }
-                      </Grid>
-                    </RadioGroup>
+                    <InputComponent {...coreComponent} />
                   </FormControl>
                 </Box>
               </GridItem>
               <GridItem xs={12}>
                 <Box m={0} pt={2}>
                   <FormControl component="fieldset" fullWidth>
-                    <FormLabel component="legend">{texts.memory}</FormLabel>
-                    <RadioGroup aria-label={texts.memory} name="memory" value={request.memory} onChange={handleRequestPropsChanged('memory')} row>
-                      <Grid container>
-                        {
-                          memoryOptions.map(option => <GridItem xs={6} sm={3} md={2} key={option.value}><FormControlLabel value={option.value} control={<Radio />} label={option.label} /></GridItem>)
-                        }
-                      </Grid>
-                    </RadioGroup>
+                    <InputComponent {...memoryComponent}/>
                   </FormControl>
                 </Box>
               </GridItem>
