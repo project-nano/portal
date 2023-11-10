@@ -11,7 +11,7 @@
   "dependencies": {
     "@material-ui/core": "^4.11.0",
     "@material-ui/icons": "^4.11.0",
-    "@material-ui/lab": "^4.0.0",
+    "@material-ui/lab": "4.0.0-alpha.61",
     "@novnc/novnc": "^1.2.0",
     "axios": "^0.19.2",
     "chart.js": "^2.9.4",
