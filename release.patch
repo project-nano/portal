@@ -1,0 +1,13 @@
+diff --git a/package.json b/package.json
+index 30645bc..1e35d4a 100644
+--- a/package.json
++++ b/package.json
+@@ -3,7 +3,7 @@
+   "version": "1.4.0",
+   "description": "Project-Nano manage portal",
+   "service": {
+-    "host": "192.168.1.39",
++    "host": "",
+     "port": 5870,
+     "debug": false
+   },
