@@ -3,7 +3,7 @@
   "version": "1.4.0",
   "description": "Project-Nano manage portal",
   "service": {
-    "host": "",
+    "host": "192.168.1.39",
     "port": 5870,
     "debug": false
   },

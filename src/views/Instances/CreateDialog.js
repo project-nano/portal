@@ -315,11 +315,6 @@ export default function CreateDialog(props) {
     if (!open) {
       return;
     }
-    // var session = getLoggedSession();
-    // if (null === session){
-    //   onCreateFail('session expired');
-    //   return;
-    // }
 
     var poolOptions = [];
     var imageOptions = [{
@@ -346,6 +341,22 @@ export default function CreateDialog(props) {
         versions: templateOptions,
         policies: securityPolicies,
       });
+      if (poolOptions && 0 !== poolOptions.length){
+        //use first pool as default
+        let defaultPool = poolOptions[0].value;
+        setRequest(previous => ({
+          ...previous,
+          pool: defaultPool,
+        }));
+      }
+      if (templateOptions && 0 !== templateOptions.length){
+        //use first template as default
+        let defaultTemplate = templateOptions[0].value;
+        setRequest(previous => ({
+          ...previous,
+          system_template: defaultTemplate,
+        }));
+      }
       setInitialed(true);
     }
     const onQueryTemplateSuccess = dataList => {

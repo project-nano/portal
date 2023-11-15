@@ -1,5 +1,7 @@
 import React from "react";
-import { Link } from "react-router-dom";
+
+import Link from '@material-ui/core/Link';
+// import { Link } from "react-router-dom";
 import Typography from '@material-ui/core/Typography';
 import Divider from '@material-ui/core/Divider';
 import Box from '@material-ui/core/Box';
@@ -28,7 +30,7 @@ import {
 } from "assets/jss/material-dashboard-react.js";
 
 const i18n = {
-  'en':{
+  'en': {
     allButton: "Show All Compute Pools",
     pools: 'Compute Pools Summary',
     cells: 'Compute Cells Summary',
@@ -55,7 +57,7 @@ const i18n = {
     write: 'Write',
     read: 'Read',
   },
-  'cn':{
+  'cn': {
     allButton: "查看所有资源池",
     pools: '计算资源池总数',
     cells: '资源节点总数',
@@ -95,11 +97,11 @@ export default function ZoneStatus(props) {
   const MemoryArraySize = 10;
   const NetworkIOArraySize = 10;
   const DiskIOArraySize = 10;
-  const [ status, setStatus ] = React.useState(null);
+  const [status, setStatus] = React.useState(null);
   const { lang } = props;
   const texts = i18n[lang];
 
-  React.useEffect(() =>{
+  React.useEffect(() => {
     var mounted = true
     var coreRecords = new Array(CoreArraySize).fill({
       current: 0,
@@ -118,7 +120,7 @@ export default function ZoneStatus(props) {
       read: 0,
     });
 
-    const queryZoneStatus = () =>{
+    const queryZoneStatus = () => {
       const MiB = 1 << 20;
       const onOperateSuccess = s => {
         coreRecords.shift();
@@ -128,8 +130,8 @@ export default function ZoneStatus(props) {
         });
         memoryRecords.shift();
         memoryRecords.push({
-          available: truncateToRadix(s.available_memory/MiB, 2),
-          used: truncateToRadix((s.max_memory - s.available_memory)/MiB, 2),
+          available: truncateToRadix(s.available_memory / MiB, 2),
+          used: truncateToRadix((s.max_memory - s.available_memory) / MiB, 2),
         });
         networkRecords.shift();
         networkRecords.push({
@@ -159,12 +161,12 @@ export default function ZoneStatus(props) {
 
     queryZoneStatus();
     const updateInterval = 2 * 1000;
-    var timerID = setInterval(()=>{
-      if (mounted){
+    var timerID = setInterval(() => {
+      if (mounted) {
         queryZoneStatus();
       }
     }, updateInterval);
-    return () =>{
+    return () => {
       mounted = false;
       clearInterval(timerID);
     }
@@ -172,27 +174,27 @@ export default function ZoneStatus(props) {
 
   //reder begin
   var session = getLoggedSession();
-  if (null === session){
+  if (null === session) {
     return redirectToLogin();
   }
 
   let content;
-  if (!status){
-    content = <Skeleton variant="rect" style={{height: '10rem'}}/>;
-  }else{
+  if (!status) {
+    content = <Skeleton variant="rect" style={{ height: '10rem' }} />;
+  } else {
     var startTime = new Date(status.start_time.replace(' ', 'T'));
     var now = new Date();
-    var elapsedSeconds = Math.floor((now.getTime() - startTime.getTime())/1000);
-    var elapsedDays = Math.floor(elapsedSeconds/(24*3600));
-    elapsedSeconds -= elapsedDays*24*3600;
-    var elapsedHours = Math.floor(elapsedSeconds/3600);
-    elapsedSeconds -= elapsedHours*3600;
-    var elapsedMinutes = Math.floor(elapsedSeconds/60);
-    elapsedSeconds -= elapsedMinutes*60;
+    var elapsedSeconds = Math.floor((now.getTime() - startTime.getTime()) / 1000);
+    var elapsedDays = Math.floor(elapsedSeconds / (24 * 3600));
+    elapsedSeconds -= elapsedDays * 24 * 3600;
+    var elapsedHours = Math.floor(elapsedSeconds / 3600);
+    elapsedSeconds -= elapsedHours * 3600;
+    var elapsedMinutes = Math.floor(elapsedSeconds / 60);
+    elapsedSeconds -= elapsedMinutes * 60;
     let uptimeText;
-    if('cn' === lang){
+    if ('cn' === lang) {
       uptimeText = '系统启动时间 ' + status.start_time + ', 已运行 ' + elapsedDays + ' 天 ' + elapsedHours + ' 小时 ' + elapsedMinutes + ' 分 ' + elapsedSeconds + ' 秒';
-    }else{
+    } else {
       uptimeText = 'System start at ' + status['start_time'] + ', Uptime: ' + elapsedDays + ' day, ' + elapsedHours + ' hour, ' + elapsedMinutes + ' min, ' + elapsedSeconds + ' secs';
     }
 
@@ -206,12 +208,12 @@ export default function ZoneStatus(props) {
       </GridItem>
     )
 
-    const [ disabledPools, enabledPools ] = status.pools;
+    const [disabledPools, enabledPools] = status.pools;
     const poolData = [{
       value: disabledPools,
       label: texts.disabled,
       color: disabledColor,
-    },{
+    }, {
       value: enabledPools,
       label: texts.enabled,
       color: seriesColor1,
@@ -221,16 +223,16 @@ export default function ZoneStatus(props) {
         <PieCard
           title={texts.pools}
           series={poolData}
-          />
+        />
       </GridItem>
     )
 
-    const [ offlineCell, onlineCell ] = status.cells;
+    const [offlineCell, onlineCell] = status.cells;
     const cellData = [{
       value: offlineCell,
       label: texts.offline,
       color: disabledColor,
-    },{
+    }, {
       value: onlineCell,
       label: texts.online,
       color: seriesColor2,
@@ -240,24 +242,24 @@ export default function ZoneStatus(props) {
         <PieCard
           title={texts.cells}
           series={cellData}
-          />
+        />
       </GridItem>
     )
 
-    const [ stoppedInstance, runningInstance, lostInstance, migrateInstance ] = status.instances;
+    const [stoppedInstance, runningInstance, lostInstance, migrateInstance] = status.instances;
     const instanceData = [{
       value: stoppedInstance,
       label: texts.stopped,
       color: disabledColor,
-    },{
+    }, {
       value: runningInstance,
       label: texts.running,
       color: seriesColor1,
-    },{
+    }, {
       value: lostInstance,
       label: texts.lost,
       color: seriesColor3,
-    },{
+    }, {
       value: migrateInstance,
       label: texts.migrate,
       color: seriesColor4,
@@ -267,18 +269,18 @@ export default function ZoneStatus(props) {
         <PieCard
           title={texts.instances}
           series={instanceData}
-          />
+        />
       </GridItem>
     )
 
     const GiB = 1 << 30;
     const availableDisk = truncateToRadix(status.available_disk / GiB, 2);
-    const usedDisk = truncateToRadix((status.max_disk - status.available_disk) /GiB, 2);
+    const usedDisk = truncateToRadix((status.max_disk - status.available_disk) / GiB, 2);
     const storageData = [{
       value: availableDisk,
       label: texts.available,
       color: seriesColor1,
-    },{
+    }, {
       value: usedDisk,
       label: texts.used,
       color: seriesColor4,
@@ -288,14 +290,14 @@ export default function ZoneStatus(props) {
         <PieCard
           title={texts.disks}
           series={storageData}
-          displayValue={value =>{
-            if (Number.isInteger(value)){
+          displayValue={value => {
+            if (Number.isInteger(value)) {
               return value.toString() + ' GB';
-            }else{
+            } else {
               return value.toFixed(2) + ' GB';
             }
           }}
-          />
+        />
       </GridItem>
     )
     //core usage
@@ -306,7 +308,7 @@ export default function ZoneStatus(props) {
     }
 
     var maxCores = 0;
-    status.coreRecords.forEach( data =>{
+    status.coreRecords.forEach(data => {
       usedCores.data.push(data.current);
       maxCores = Math.max(maxCores, data.max);
     })
@@ -319,7 +321,7 @@ export default function ZoneStatus(props) {
           color='success'
           minTickStep={1}
           maxValue={maxCores}
-          />
+        />
       </GridItem>
     )
     //memory
@@ -333,7 +335,7 @@ export default function ZoneStatus(props) {
       color: successColor[1],
       data: [],
     };
-    status.memoryRecords.forEach( data =>{
+    status.memoryRecords.forEach(data => {
       usedMemory.data.push(data.used);
       availableMemory.data.push(data.available)
     })
@@ -344,21 +346,21 @@ export default function ZoneStatus(props) {
           series={[usedMemory, availableMemory]}
           color='info'
           minTickStep={1 << 10}
-          displayValue={ mib => {
+          displayValue={mib => {
             const GiB = 1 << 10;
-            if (0 === mib){
+            if (0 === mib) {
               return '0';
-            }else if (mib >= GiB){
-              if (0 === mib % GiB){
+            } else if (mib >= GiB) {
+              if (0 === mib % GiB) {
                 return (mib / GiB).toString() + ' GB';
-              }else{
+              } else {
                 return (mib / GiB).toFixed(2) + ' GB';
               }
-            }else {
+            } else {
               return mib.toString() + ' MB';
             }
           }}
-          />
+        />
       </GridItem>
     )
     //network
@@ -372,11 +374,11 @@ export default function ZoneStatus(props) {
       color: primaryColor[1],
       data: [],
     };
-    status.networkRecords.forEach( data =>{
+    status.networkRecords.forEach(data => {
       networkReceive.data.push(data.receive);
       networkSend.data.push(data.send)
     })
-    const networkSeries = [ networkReceive, networkSend ];
+    const networkSeries = [networkReceive, networkSend];
     const mbBased = 1 << 20;
     const networkChart = (
       <GridItem xs={12} sm={6} md={4} key='network-usage'>
@@ -386,7 +388,7 @@ export default function ZoneStatus(props) {
           displayValue={bpsToString}
           minTickStep={mbBased}
           color='warning'
-          />
+        />
       </GridItem>
     )
     //disk IO
@@ -400,11 +402,11 @@ export default function ZoneStatus(props) {
       color: infoColor[3],
       data: [],
     };
-    status.diskRecords.forEach( data =>{
+    status.diskRecords.forEach(data => {
       diskWrite.data.push(data.write);
       diskRead.data.push(data.read);
     })
-    const diskSeries = [ diskWrite, diskRead ];
+    const diskSeries = [diskWrite, diskRead];
     const diskIOChart = (
       <GridItem xs={12} sm={6} md={4} key='io-usage'>
         <MultiBarCard
@@ -413,10 +415,37 @@ export default function ZoneStatus(props) {
           displayValue={bpsToString}
           minTickStep={mbBased}
           color='rose'
-          />
+        />
       </GridItem>
     )
+    const addLinkURL = '/admin/compute_cells/?pool=default';
+    let promptComponent = <div />;
+    if (0 === onlineCell + offlineCell) {
+      //no cell configured
+      let promptContent;
+      if ('cn' === lang) {
+        promptContent = (
+          <Typography component='div' variant='h6'>
+            尚未配置资源节点，先进行<Link href={addLinkURL} color='secondary' underline='always'> 添加 </Link>方可创建云主机
+          </Typography>
+        )
+      } else {
+        promptContent = (
+          <Typography component='div' variant='h6'>
+            No resource node configured, <Link href={addLinkURL} color='secondary' underline='always'> add </Link> a cell first to create instances
+          </Typography>
+        )
+      }
+      promptComponent = (
+        <GridItem xs={12} key='prompt'>
+          <Box align='center' m={2} color="warning.main">
+            {promptContent}
+          </Box>
+        </GridItem>
+      )
+    }
     content = [
+      promptComponent,
       updateTime,
       poolChart,
       cellChart,
@@ -430,22 +459,22 @@ export default function ZoneStatus(props) {
   }
 
   return (
-      <GridContainer>
-        <GridItem xs={12}>
-          <GridContainer>
-            <GridItem xs={6} sm={4} md={3}>
-              <Link to='/admin/dashboard/pools/'>
-                <Button size="sm" color="info" round><AllOutIcon />{texts.allButton}</Button>
-              </Link>
-            </GridItem>
-          </GridContainer>
-        </GridItem>
-        <GridItem xs={12}>
-          <Box mt={3} mb={3}>
-            <Divider/>
-          </Box>
-        </GridItem>
-        {content}
-      </GridContainer>
+    <GridContainer>
+      <GridItem xs={12}>
+        <GridContainer>
+          <GridItem xs={6} sm={4} md={3}>
+            <Link href='/admin/dashboard/pools/'>
+              <Button size="sm" color="info" round><AllOutIcon />{texts.allButton}</Button>
+            </Link>
+          </GridItem>
+        </GridContainer>
+      </GridItem>
+      <GridItem xs={12}>
+        <Box mt={3} mb={3}>
+          <Divider />
+        </Box>
+      </GridItem>
+      {content}
+    </GridContainer>
   )
 }

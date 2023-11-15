@@ -6,6 +6,7 @@
 
 - Prompt on login page when system error
 - Add service.host/service.port to 'package.json' to configure CORS backend connnection
+- Prompt add first resource node if not available
 
 ### Changed 
 
@@ -15,6 +16,8 @@
 - Only allow '.qcow2' files to upload for disk images
 - Read cores/memory/disk limit via frontend on page of creating instances
 - Optimize core/memory/disk configure in creating page
+- Using first pool by default when creating instance
+- Using first system template by default when creating instance
 
 ## [1.3.1] - 2021-02-22
 

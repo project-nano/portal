@@ -392,6 +392,22 @@ export default function CreateDialog(props) {
         images: imageOptions,
         versions: templateOptions,
       });
+      if (poolOptions && 0 !== poolOptions.length){
+        //use first pool as default
+        let defaultPool = poolOptions[0].value;
+        setRequest(previous => ({
+          ...previous,
+          pool: defaultPool,
+        }));
+      }
+      if (templateOptions && 0 !== templateOptions.length){
+        //use first template as default
+        let defaultTemplate = templateOptions[0].value;
+        setRequest(previous => ({
+          ...previous,
+          system_template: defaultTemplate,
+        }));
+      }
       setInitialed(true);
     }
 
