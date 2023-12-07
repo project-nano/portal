@@ -2,6 +2,21 @@
 
 ## [1.4.0] - 2023-11-02
 
+### 新增
+
+- 登录页面增加系统错误提示
+- package.json新增参数service.host/service.port用于设置跨域时的后端服务地址
+- 未添加资源节点时进行提示
+
+### 修改
+
+- 切换到yarn编译
+- 更新版权日期
+- 仅允许.iso文件上传为光盘镜像
+- 仅允许.qcow2文件上传为磁盘镜像
+- 新建云主机时优化参数配置界面，允许从Frontend接口读取用户自定最大值
+- 新建云主机时，默认选择第一个资源池和系统模板
+
 ### Added
 
 - Prompt on login page when system error
